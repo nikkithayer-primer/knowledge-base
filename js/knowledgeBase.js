@@ -747,7 +747,6 @@ function showErrorDialog(title, message) {
 
 // Debug function to check alternative collection names
 async function debugCheckAlternativeCollections() {
-    console.log('🔍 Debug: Checking alternative collection names...');
     
     const alternativeNames = [
         'person', 'persons', 'people',
