@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Base Writer</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>Knowledge Base Writer</h1>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="content-grid">
+            <section class="form-section">
+                <div class="section-tabs">
+                    <button type="button" id="manualTab" class="tab-button active">Manual Entry</button>
+                    <button type="button" id="csvTab" class="tab-button">CSV Upload</button>
+                    <button type="button" id="approvalTab" class="tab-button">Approval Queue</button>
+                    <button type="button" id="knowledgeBaseTab" class="tab-button">Knowledge Base</button>
+                </div>
+                
+                <div id="manualSection" class="tab-content active">
+                    <h2>Create Entry</h2>
+                    
+                    <!-- Entity Type Tabs -->
+                    <div class="entity-type-tabs">
+                        <button type="button" id="peopleEntityTab" class="entity-tab-button active" data-entity-type="people">👤 Person</button>
+                        <button type="button" id="placesEntityTab" class="entity-tab-button" data-entity-type="places">📍 Place</button>
+                        <button type="button" id="organizationsEntityTab" class="entity-tab-button" data-entity-type="organizations">🏢 Organization</button>
+                    </div>
+                
+                    <form id="dataForm">
+                        <input type="hidden" id="entityType" name="entityType" value="people">
+                        
+                        <div id="dynamicFields">
+                            <!-- Dynamic fields will be inserted here based on entity type -->
+                        </div>
+                        
+                        <div class="button-group">
+                            <button type="submit" id="submitBtn">Save Entry</button>
+                            <button type="button" id="loadBtn">Load Data</button>
+                            <button type="reset" id="resetBtn">Reset Form</button>
+                        </div>
+                    </form>
+                    
+                    <div id="status" class="status"></div>
+                </div>
+                
+                <div id="csvSection" class="tab-content">
+                    <h2>CSV Upload & Data</h2>
+                    
+                    <!-- Upload Area -->
+                    <div class="csv-upload-area">
+                        <div class="upload-zone" id="uploadZone">
+                            <div class="upload-content">
+                                <div class="upload-icon">📄</div>
+                                <h3>Drop CSV file here</h3>
+                                <p>or click to browse</p>
+                                <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+                            </div>
+                        </div>
+                        
+                        <div class="csv-info">
+                            <h4>Expected CSV Format:</h4>
+                            <p class="format-description">
+                                <strong>Columns:</strong> Actor, Action, Target, Sentence, Date Received, Locations, Datetimes
+                            </p>
+                            <div class="format-example">
+                                <code>"Actor","Action","Target","Sentence","Date Received","Locations","Datetimes"</code>
+                            </div>
+                            <p class="format-description">
+                                <small>Supports both quoted and unquoted fields. Accepts "Datetime" or "Datetimes" for the last column.</small>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div id="csvStatus" class="status"></div>
+                    
+                    <!-- Data Display Area -->
+                    <div id="csvDataDisplay" style="display: none;">
+                        <div class="csv-data-header">
+                            <h3>📊 Uploaded Data</h3>
+                            <button type="button" id="clearCsvBtn" class="clear-csv-btn">🗑️ Clear Data</button>
+                        </div>
+                        <div id="csvTableContainer" class="csv-table-container"></div>
+                    </div>
+                    
+                    <div id="csvEmptyState" style="display: block;">
+                        <p class="no-data">No CSV data loaded. Upload a CSV file to view data here.</p>
+                    </div>
+                </div>
+                
+                <div id="approvalSection" class="tab-content">
+                    <h2>Entity Approval Queue</h2>
+                    <div id="approvalControls" class="approval-controls">
+                        <button type="button" id="approveAllBtn" class="approve-all-btn" disabled>✓ Approve All</button>
+                        <button type="button" id="rejectAllBtn" class="reject-all-btn" disabled>✗ Reject All</button>
+                        <span id="approvalStats" class="approval-stats">No entities to review</span>
+                    </div>
+                    <div id="approvalQueue" class="approval-queue"></div>
+                    <div id="approvalEmptyState" style="display: block;">
+                        <p class="no-data">No entities pending approval. Upload a CSV file to see extracted entities here.</p>
+                    </div>
+                </div>
+                
+                <div id="knowledgeBaseSection" class="tab-content">
+                    <h2>Knowledge Base</h2>
+                    <div id="knowledgeBaseControls" class="knowledge-base-controls">
+                        <div class="kb-filters">
+                            <input type="text" id="searchFilter" class="kb-search" placeholder="Search entities...">
+                            <button type="button" id="refreshKBBtn" class="refresh-btn">🔄 Refresh</button>
+                        </div>
+                        <div id="knowledgeBaseStats" class="kb-stats">Loading knowledge base...</div>
+                    </div>
+                    
+                    <!-- Entity Type Tabs -->
+                    <div class="kb-entity-tabs">
+                        <button type="button" id="peopleKBTab" class="kb-tab-button active" data-entity-type="people">👤 People</button>
+                        <button type="button" id="placesKBTab" class="kb-tab-button" data-entity-type="places">📍 Places</button>
+                        <button type="button" id="organizationsKBTab" class="kb-tab-button" data-entity-type="organizations">🏢 Organizations</button>
+                    </div>
+                    
+                    <div id="knowledgeBaseContent" class="knowledge-base-content">
+                        <div class="kb-tab-content active" id="peopleKBContent">
+                            <div id="peopleList" class="kb-entity-list"></div>
+                        </div>
+                        <div class="kb-tab-content" id="placesKBContent">
+                            <div id="placesList" class="kb-entity-list"></div>
+                        </div>
+                        <div class="kb-tab-content" id="organizationsKBContent">
+                            <div id="organizationsList" class="kb-entity-list"></div>
+                        </div>
+                    </div>
+                    <div id="knowledgeBaseEmptyState" style="display: block;">
+                        <p class="no-data">No entities in knowledge base. Approve some entities from the Approval Queue to populate your knowledge base.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

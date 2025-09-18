@@ -1,0 +1,261 @@
+/* Form styles */
+.form-group {
+    margin-bottom: var(--space-6);
+}
+
+/* Entity Type Tabs */
+.entity-type-tabs {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+    border-bottom: 2px solid var(--gray-200);
+    padding-bottom: var(--space-1);
+}
+
+.entity-tab-button {
+    padding: var(--space-3) var(--space-4);
+    border: none;
+    background: transparent;
+    color: var(--gray-600);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.entity-tab-button:hover {
+    background: var(--gray-100);
+    color: var(--gray-800);
+}
+
+.entity-tab-button.active {
+    background: var(--white);
+    color: var(--primary-color);
+    font-weight: var(--font-weight-semibold);
+}
+
+.entity-tab-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 1px;
+}
+
+/* New field group layout */
+.field-group {
+    margin-bottom: var(--space-6);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    background: var(--white);
+    overflow: hidden;
+}
+
+.field-group-title {
+    background: var(--gray-100);
+    padding: var(--space-3) var(--space-4);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
+    color: var(--gray-800);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.field-group-container {
+    padding: var(--space-4);
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* Special styling for wikidata group */
+.wikidata-group {
+    border-color: var(--accent-color);
+    background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+}
+
+.wikidata-group .field-group-container {
+    padding: var(--space-5);
+}
+
+/* Form field styling */
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.form-field.full-width {
+    grid-column: 1 / -1;
+}
+
+
+.form-field label {
+    font-weight: var(--font-weight-medium);
+    color: var(--gray-700);
+    font-size: var(--font-size-sm);
+}
+
+/* Compact input styling for new fields */
+.form-field input,
+.form-field select,
+.form-field textarea {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-fast);
+    background: var(--white);
+    color: var(--gray-800);
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Help text styling */
+.help-text {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-top: var(--space-1);
+    line-height: 1.4;
+}
+
+/* Autofill feedback */
+.autofill-feedback {
+    font-size: 12px;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-1);
+    font-weight: var(--font-weight-medium);
+    animation: slideIn 0.3s ease-out;
+}
+
+.autofill-feedback.success {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.autofill-feedback.warning {
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fed7aa;
+}
+
+.autofill-feedback.error {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .field-group-container {
+        grid-template-columns: 1fr;
+    }
+    
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-base);
+    font-family: var(--font-family);
+    transition: all var(--transition-fast);
+    background: var(--white);
+    color: var(--gray-800);
+    min-height: var(--input-height);
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+input::placeholder, textarea::placeholder {
+    color: var(--gray-400);
+}
+
+textarea {
+    resize: vertical;
+    min-height: 100px;
+    padding-top: var(--space-3);
+}
+
+select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right var(--space-3) center;
+    background-repeat: no-repeat;
+    background-size: 16px 12px;
+    padding-right: var(--space-10);
+}
+
+/* Field Groups */
+.field-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: var(--space-6);
+}
+
+
+/* Array Fields */
+.array-field {
+    position: relative;
+}
+
+.array-input {
+    display: flex;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    align-items: center;
+}
+
+.array-input input {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+/* Coordinates */
+.coordinates-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+/* Help Text */
+.help-text {
+    font-size: var(--font-size-sm);
+    color: var(--gray-500);
+    margin-top: var(--space-1);
+    font-style: italic;
+}

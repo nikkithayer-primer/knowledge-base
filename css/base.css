@@ -1,0 +1,130 @@
+/* Base styles and resets */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    margin: 0;
+    padding: 0;
+    background: var(--white);
+    min-height: 100vh;
+    color: var(--gray-800);
+    line-height: 1.5;
+    font-size: var(--font-size-base);
+}
+
+/* Header */
+.header {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    padding: var(--space-6) 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+}
+
+h1 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -0.025em;
+}
+
+/* Main Content */
+.main-content {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--section-gap) var(--space-6);
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--section-gap);
+    align-items: start;
+}
+
+.form-section {
+    background: var(--white);
+    padding: var(--space-8);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+}
+
+.data-section {
+    background: var(--gray-50);
+    padding: var(--space-8);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+}
+
+h2 {
+    margin: 0 0 var(--space-6) 0;
+    color: var(--gray-900);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: -0.025em;
+}
+
+h3 {
+    margin: 0 0 var(--space-4) 0;
+    color: var(--gray-800);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-medium);
+}
+
+h4 {
+    margin: 0 0 var(--space-2) 0;
+    color: var(--gray-900);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-base);
+}
+
+p {
+    margin: var(--space-1) 0;
+    color: var(--gray-600);
+    font-size: var(--font-size-sm);
+}
+
+label {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-weight: var(--font-weight-medium);
+    color: var(--gray-800);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .main-content {
+        padding: var(--space-8) var(--space-4);
+    }
+    
+    .form-section {
+        padding: var(--space-6);
+    }
+}
+
+@media (max-width: 640px) {
+    .header-content {
+        padding: 0 var(--space-4);
+    }
+    
+    .main-content {
+        padding: var(--space-6) var(--space-4);
+    }
+    
+    h1 {
+        font-size: var(--font-size-xl);
+    }
+}

@@ -1,0 +1,92 @@
+/* Button styles */
+button {
+    background: var(--primary-color);
+    color: var(--white);
+    padding: var(--space-3) var(--space-6);
+    border: 1px solid var(--primary-color);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-right: var(--space-3);
+    margin-bottom: var(--space-3);
+    min-height: var(--button-height);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+button:hover:not(:disabled) {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--gray-400);
+    border-color: var(--gray-400);
+}
+
+/* Button Actions Container */
+.button-group {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--gray-200);
+}
+
+/* Button Variants */
+.add-btn {
+    background: var(--success-button);
+    color: var(--white);
+    border: 1px solid var(--success-button);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    font-family: var(--font-family);
+    margin: var(--space-2) 0 0 0;
+    min-height: 36px;
+    transition: all var(--transition-fast);
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.add-btn:hover:not(:disabled) {
+    background: var(--success-text);
+    border-color: var(--success-text);
+}
+
+.remove-btn {
+    background: var(--error-button);
+    color: var(--white);
+    border: 1px solid var(--error-button);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    font-family: var(--font-family);
+    min-height: 36px;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.remove-btn:hover:not(:disabled) {
+    background: var(--error-text);
+    border-color: var(--error-text);
+}
