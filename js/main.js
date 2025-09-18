@@ -60,10 +60,6 @@ function checkForDuplicateInKB(entityName, entityType) {
     const kbKey = entityTypeMapping[entityType] || entityType + 's';
     const entities = kbData[kbKey] || [];
     
-    console.log(`🔍 Checking for duplicate: "${entityName}" (type: ${entityType}) in ${kbKey} (${entities.length} entities)`);
-    if (entities.length > 0) {
-        console.log(`📋 First few entities in ${kbKey}:`, entities.slice(0, 3).map(e => ({ id: e.id, name: e.name })));
-    }
     
     // Check for exact name match
     const exactMatch = entities.find(entity => 
@@ -71,7 +67,6 @@ function checkForDuplicateInKB(entityName, entityType) {
     );
     
     if (exactMatch) {
-        console.log(`✅ Exact match found: "${entityName}" matches "${exactMatch.name}"`);
         return { type: 'exact', entity: exactMatch };
     }
     
@@ -95,7 +90,6 @@ function checkForDuplicateInKB(entityName, entityType) {
         return { type: 'wikidata', entity: wikidataMatch };
     }
     
-    console.log(`❌ No duplicate found for: "${entityName}" (type: ${entityType})`);
     return null;
 }
 

@@ -71,76 +71,53 @@ export function generateDynamicFields(entityType, dynamicFields) {
 
 // Organize fields into logical groups for better layout
 function organizeFieldsIntoGroups(fields) {
-    // Move wikidata_id to the top
-    const wikidataField = fields.find(f => f.name === 'wikidata_id');
-    const otherFields = fields.filter(f => f.name !== 'wikidata_id');
-    
     const groups = [];
     
-    // Wikidata ID group (always first)
-    if (wikidataField) {
-        groups.push({
-            className: 'field-group wikidata-group',
-            fields: [wikidataField]
-        });
-    }
+    // Group fields by their 'group' property
+    const fieldsByGroup = {};
     
-    // Basic info group (name only - ID is auto-generated)
-    const basicFields = otherFields.filter(f => 
-        ['name'].includes(f.name)
-    );
-    if (basicFields.length > 0) {
-        groups.push({
-            className: 'field-group basic-group',
-            title: 'Basic Information',
-            fields: basicFields
-        });
-    }
+    fields.forEach(field => {
+        const groupName = field.group || 'other';
+        if (!fieldsByGroup[groupName]) {
+            fieldsByGroup[groupName] = [];
+        }
+        fieldsByGroup[groupName].push(field);
+    });
     
-    // Main details group (most common fields)
-    const mainFields = otherFields.filter(f => 
-        ['occupation', 'jobTitle', 'currentEmployer', 'category', 'industry', 'country', 'location'].includes(f.name)
-    );
-    if (mainFields.length > 0) {
-        groups.push({
-            className: 'field-group main-group',
-            title: 'Details',
-            fields: mainFields
-        });
-    }
+    // Define the order of groups
+    const groupOrder = ['basic', 'personal', 'professional', 'education', 'location', 'classification', 'geographic', 'demographics', 'details', 'legacy', 'other'];
     
-    // Additional info group
-    const additionalFields = otherFields.filter(f => 
-        ['dateOfBirth', 'gender', 'founded', 'population', 'coordinates_lat', 'coordinates_lng'].includes(f.name)
-    );
-    if (additionalFields.length > 0) {
-        groups.push({
-            className: 'field-group additional-group',
-            title: 'Additional Information',
-            fields: additionalFields
-        });
-    }
-    
-    // Array fields group
-    const arrayFields = otherFields.filter(f => f.type === 'array');
-    if (arrayFields.length > 0) {
-        groups.push({
-            className: 'field-group array-group',
-            title: 'Lists',
-            fields: arrayFields
-        });
-    }
-    
-    // Description group (always last)
-    const descriptionField = otherFields.find(f => f.name === 'description');
-    if (descriptionField) {
-        groups.push({
-            className: 'field-group description-group',
-            fields: [descriptionField]
-        });
-    }
+    // Create groups in the defined order
+    groupOrder.forEach(groupName => {
+        if (fieldsByGroup[groupName] && fieldsByGroup[groupName].length > 0) {
+            groups.push({
+                className: `field-group ${groupName}-group`,
+                title: formatGroupName(groupName),
+                fields: fieldsByGroup[groupName]
+            });
+        }
+    });
     
     return groups;
+}
+
+// Format group names for display
+function formatGroupName(groupName) {
+    const groupTitles = {
+        'basic': 'Basic Information',
+        'personal': 'Personal Details',
+        'professional': 'Professional Information',
+        'education': 'Education',
+        'location': 'Location',
+        'classification': 'Classification',
+        'geographic': 'Geographic Information',
+        'demographics': 'Demographics & History',
+        'details': 'Organization Details',
+        'legacy': 'Legacy Fields',
+        'other': 'Additional Information'
+    };
+    
+    return groupTitles[groupName] || groupName.charAt(0).toUpperCase() + groupName.slice(1);
 }
 
 // Get appropriate CSS class for field based on type and layout
