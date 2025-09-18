@@ -49,7 +49,7 @@ export async function loadEntitiesFromFirebase(entityType, limitCount = 10) {
         // Try to query with createdAt first (for new entities)
         let q = query(
             collection(db, entityType), 
-            orderBy('createdAt', 'desc'), 
+            orderBy('created', 'desc'), 
             limit(limitCount)
         );
         

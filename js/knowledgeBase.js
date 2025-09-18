@@ -78,10 +78,7 @@ export async function loadKnowledgeBase() {
         updateKnowledgeBaseTab(totalEntities);
         
         console.log(`📚 Knowledge base loaded: ${totalEntities} total entities`);
-        
-        // Debug: Check if there might be entities in other collection names
-        await debugCheckAlternativeCollections();
-        
+                
     } catch (error) {
         console.error('Error loading knowledge base:', error);
         statsElement.textContent = `Error loading knowledge base: ${error.message}`;
@@ -743,27 +740,4 @@ function showErrorDialog(title, message) {
     });
     
     setTimeout(() => okBtn.focus(), 100);
-}
-
-// Debug function to check alternative collection names
-async function debugCheckAlternativeCollections() {
-    
-    const alternativeNames = [
-        'person', 'persons', 'people',
-        'place', 'places', 
-        'organization', 'organizations', 'orgs'
-    ];
-    
-    for (const collectionName of alternativeNames) {
-        try {
-            const entities = await loadEntitiesFromFirebase(collectionName, 5);
-            if (entities.length > 0) {
-                console.log(`📋 Found ${entities.length} entities in collection "${collectionName}":`, 
-                    entities.map(e => ({ id: e.id, name: e.name, type: e.type })));
-            }
-        } catch (error) {
-            // Collection might not exist, that's ok
-            console.log(`📋 Collection "${collectionName}" not found or empty`);
-        }
-    }
 }

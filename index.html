@@ -60,6 +60,7 @@
                                 <div class="upload-icon">📄</div>
                                 <h3>Drop CSV file here</h3>
                                 <p>or click to browse</p>
+                                <label for="csvFileInput" style="display: none;">Upload CSV File</label>
                                 <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
                             </div>
                         </div>
@@ -111,6 +112,7 @@
                     <h2>Knowledge Base</h2>
                     <div id="knowledgeBaseControls" class="knowledge-base-controls">
                         <div class="kb-filters">
+                            <label for="searchFilter" class="sr-only">Search entities</label>
                             <input type="text" id="searchFilter" class="kb-search" placeholder="Search entities...">
                             <button type="button" id="refreshKBBtn" class="refresh-btn">🔄 Refresh</button>
                         </div>

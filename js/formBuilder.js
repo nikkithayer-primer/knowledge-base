@@ -32,7 +32,15 @@ export function generateDynamicFields(entityType, dynamicFields) {
             
             const label = document.createElement('label');
             label.textContent = formatFieldName(field.name);
-            label.setAttribute('for', field.name);
+            
+            // Set the 'for' attribute based on field type
+            if (field.type === 'array') {
+                // For array fields, don't set 'for' attribute since there are multiple inputs
+                // The label will be associated with the container semantically
+            } else {
+                label.setAttribute('for', field.name);
+            }
+            
             if (field.required) {
                 label.textContent += ' *';
             }
@@ -263,6 +271,7 @@ function addArrayInput(container, fieldName, placeholder) {
     const input = document.createElement('input');
     input.type = 'text';
     input.name = fieldName;
+    input.id = `${fieldName}_${container.children.length}`;
     input.placeholder = placeholder || '';
     
     const removeBtn = document.createElement('button');
