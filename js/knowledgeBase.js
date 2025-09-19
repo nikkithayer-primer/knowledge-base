@@ -30,7 +30,7 @@ export async function loadKnowledgeBase() {
     try {
         statsElement.textContent = 'Loading knowledge base...';
         
-        // Load all entity types from Firebase
+        // Load all entity types from Firebase  
         console.log('🔍 Knowledge Base: Starting to load entities from Firebase...');
         
         // Debug: Show what collections we're trying to load from
@@ -197,6 +197,8 @@ function getTableColumns(entityType) {
             ...commonColumns,
             { key: 'category', label: 'Category' },
             { key: 'industry', label: 'Industry' },
+            { key: 'sport', label: 'Sport' },
+            { key: 'league', label: 'League' },
             { key: 'founded', label: 'Founded' },
             { key: 'location', label: 'Location' }
         ];
@@ -436,6 +438,7 @@ function createEntityDetails(entity, entityType) {
             </div>
         `;
     } else if (entityType === 'organizations') {
+        const isSportsTeam = entity.category === 'sports team';
         return `
             <div class="kb-detail-item">
                 <div class="kb-detail-label">Category</div>
@@ -443,12 +446,52 @@ function createEntityDetails(entity, entityType) {
                     ${entity.category || 'Not specified'}
                 </div>
             </div>
+            ${!isSportsTeam ? `
             <div class="kb-detail-item">
                 <div class="kb-detail-label">Industry</div>
                 <div class="kb-detail-value ${entity.industry ? '' : 'empty'}">
                     ${entity.industry || 'Not specified'}
                 </div>
             </div>
+            ` : ''}
+            ${isSportsTeam ? `
+            <div class="kb-detail-item">
+                <div class="kb-detail-label">Sport</div>
+                <div class="kb-detail-value ${entity.sport ? '' : 'empty'}">
+                    ${entity.sport || 'Not specified'}
+                </div>
+            </div>
+            <div class="kb-detail-item">
+                <div class="kb-detail-label">League</div>
+                <div class="kb-detail-value ${entity.league ? '' : 'empty'}">
+                    ${entity.league || 'Not specified'}
+                </div>
+            </div>
+            <div class="kb-detail-item">
+                <div class="kb-detail-label">Stadium</div>
+                <div class="kb-detail-value ${entity.stadium ? '' : 'empty'}">
+                    ${entity.stadium || 'Not specified'}
+                </div>
+            </div>
+            <div class="kb-detail-item">
+                <div class="kb-detail-label">Coach</div>
+                <div class="kb-detail-value ${entity.coach ? '' : 'empty'}">
+                    ${entity.coach || 'Not specified'}
+                </div>
+            </div>
+            <div class="kb-detail-item">
+                <div class="kb-detail-label">Conference</div>
+                <div class="kb-detail-value ${entity.conference ? '' : 'empty'}">
+                    ${entity.conference || 'Not specified'}
+                </div>
+            </div>
+            <div class="kb-detail-item">
+                <div class="kb-detail-label">Division</div>
+                <div class="kb-detail-value ${entity.division ? '' : 'empty'}">
+                    ${entity.division || 'Not specified'}
+                </div>
+            </div>
+            ` : ''}
             <div class="kb-detail-item">
                 <div class="kb-detail-label">Founded</div>
                 <div class="kb-detail-value ${entity.founded ? '' : 'empty'}">

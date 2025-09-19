@@ -52,18 +52,26 @@ export const entityFields = {
     organizations: [
         // Basic Information
         { name: 'wikidata_id', type: 'text', placeholder: 'Q123456 (optional)', group: 'basic' },
-        { name: 'name', type: 'text', required: true, placeholder: 'Tech Corp', group: 'basic' },
-        { name: 'aliases', type: 'array', placeholder: 'TechCorp, TC', group: 'basic' },
-        { name: 'description', type: 'textarea', required: true, placeholder: 'Brief description of the organization', group: 'basic' },
+        { name: 'name', type: 'text', required: true, placeholder: 'Golden State Warriors', group: 'basic' },
+        { name: 'aliases', type: 'array', placeholder: 'Warriors, GSW, Dubs', group: 'basic' },
+        { name: 'description', type: 'textarea', required: true, placeholder: 'Brief description of the organization or team', group: 'basic' },
         
         // Classification
-        { name: 'category', type: 'select', options: ['company', 'research', 'university', 'non-profit', 'government'], group: 'classification' },
+        { name: 'category', type: 'select', options: ['company', 'research', 'university', 'non-profit', 'government', 'sports team'], group: 'classification' },
         { name: 'industry', type: 'text', placeholder: 'Technology', group: 'classification' },
         
         // Organization Details
         { name: 'founded', type: 'number', placeholder: '2010', group: 'details' },
         { name: 'location', type: 'text', placeholder: 'San Francisco, CA', group: 'details' },
-        { name: 'employees', type: 'number', placeholder: '5000', group: 'details' }
+        { name: 'employees', type: 'number', placeholder: '5000', group: 'details' },
+        
+        // Sports-specific fields (conditional based on category)
+        { name: 'sport', type: 'text', placeholder: 'Basketball', group: 'sports' },
+        { name: 'league', type: 'text', placeholder: 'NBA', group: 'sports' },
+        { name: 'stadium', type: 'text', placeholder: 'Chase Center', group: 'sports' },
+        { name: 'coach', type: 'text', placeholder: 'Steve Kerr', group: 'sports' },
+        { name: 'conference', type: 'text', placeholder: 'Western Conference', group: 'sports' },
+        { name: 'division', type: 'text', placeholder: 'Pacific Division', group: 'sports' }
     ]
 };
 

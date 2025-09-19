@@ -10,6 +10,7 @@
     <header class="header">
         <div class="header-content">
             <h1>Knowledge Base Writer</h1>
+            <button type="button" id="createEntryBtn" class="create-entry-btn">+ Create Entry</button>
         </div>
     </header>
 
@@ -17,40 +18,12 @@
         <div class="content-grid">
             <section class="form-section">
                 <div class="section-tabs">
-                    <button type="button" id="manualTab" class="tab-button active">Manual Entry</button>
-                    <button type="button" id="csvTab" class="tab-button">CSV Upload</button>
+                    <button type="button" id="csvTab" class="tab-button active">CSV Upload</button>
                     <button type="button" id="approvalTab" class="tab-button">Approval Queue</button>
                     <button type="button" id="knowledgeBaseTab" class="tab-button">Knowledge Base</button>
                 </div>
                 
-                <div id="manualSection" class="tab-content active">
-                    <h2>Create Entry</h2>
-                    
-                    <!-- Entity Type Tabs -->
-                    <div class="entity-type-tabs">
-                        <button type="button" id="peopleEntityTab" class="entity-tab-button active" data-entity-type="people">👤 Person</button>
-                        <button type="button" id="placesEntityTab" class="entity-tab-button" data-entity-type="places">📍 Place</button>
-                        <button type="button" id="organizationsEntityTab" class="entity-tab-button" data-entity-type="organizations">🏢 Organization</button>
-                    </div>
-                
-                    <form id="dataForm">
-                        <input type="hidden" id="entityType" name="entityType" value="people">
-                        
-                        <div id="dynamicFields">
-                            <!-- Dynamic fields will be inserted here based on entity type -->
-                        </div>
-                        
-                        <div class="button-group">
-                            <button type="submit" id="submitBtn">Save Entry</button>
-                            <button type="button" id="loadBtn">Load Data</button>
-                            <button type="reset" id="resetBtn">Reset Form</button>
-                        </div>
-                    </form>
-                    
-                    <div id="status" class="status"></div>
-                </div>
-                
-                <div id="csvSection" class="tab-content">
+                <div id="csvSection" class="tab-content active">
                     <h2>CSV Upload & Data</h2>
                     
                     <!-- Upload Area -->
@@ -144,6 +117,55 @@
             </section>
         </div>
     </main>
+
+    <!-- Manual Entry Modal -->
+    <div id="manualEntryModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Create Entry</h2>
+                <button type="button" id="closeModalBtn" class="close-modal-btn">&times;</button>
+            </div>
+            
+            <div class="modal-content">
+                <form id="dataForm">
+                    <input type="hidden" id="entityType" name="entityType" value="">
+                    
+                    <!-- Wikidata ID field - always shown first for auto-detection -->
+                    <div class="form-group wikidata-detection-field">
+                        <label for="wikidataIdDetection" class="form-label">Wikidata ID (Optional)</label>
+                        <input type="text" id="wikidataIdDetection" name="wikidata_id" class="form-input" placeholder="Q123456 - Enter to auto-detect entity type">
+                        <div class="help-text">Enter a Wikidata ID to automatically detect entity type and populate fields</div>
+                    </div>
+                    
+                    <div id="entityTypeIndicator" class="entity-type-indicator hidden">
+                        <span id="detectedType" class="detected-type"></span>
+                    </div>
+                    
+                    <!-- Manual entity type selection (shown when no Wikidata ID) -->
+                    <div id="manualTypeSelection" class="manual-type-selection">
+                        <label class="form-label">Or select entity type manually:</label>
+                        <div class="manual-type-buttons">
+                            <button type="button" class="manual-type-btn" data-type="people">👤 Person</button>
+                            <button type="button" class="manual-type-btn" data-type="places">📍 Place</button>
+                            <button type="button" class="manual-type-btn" data-type="organizations">🏢 Organization</button>
+                        </div>
+                    </div>
+                    
+                    <div id="dynamicFields">
+                        <!-- Dynamic fields will be inserted here based on entity type -->
+                    </div>
+                    
+                    <div class="button-group">
+                        <button type="submit" id="submitBtn">Save Entry</button>
+                        <button type="button" id="loadBtn">Load Data</button>
+                        <button type="reset" id="resetBtn">Reset Form</button>
+                    </div>
+                </form>
+                
+                <div id="status" class="status"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Firebase SDK -->
     <script type="module" src="js/main.js"></script>

@@ -17,20 +17,24 @@ const loadBtn = document.getElementById('loadBtn');
 const resetBtn = document.getElementById('resetBtn');
 const statusDiv = document.getElementById('status');
 
-// Entity type tabs
-const peopleEntityTab = document.getElementById('peopleEntityTab');
-const placesEntityTab = document.getElementById('placesEntityTab');
-const organizationsEntityTab = document.getElementById('organizationsEntityTab');
+// Auto-detection elements
+const wikidataIdDetection = document.getElementById('wikidataIdDetection');
+const entityTypeIndicator = document.getElementById('entityTypeIndicator');
+const detectedType = document.getElementById('detectedType');
+const manualTypeSelection = document.getElementById('manualTypeSelection');
 
-// CSV elements
-const manualTab = document.getElementById('manualTab');
+// Tab elements
 const csvTab = document.getElementById('csvTab');
 const approvalTab = document.getElementById('approvalTab');
 const knowledgeBaseTab = document.getElementById('knowledgeBaseTab');
-const manualSection = document.getElementById('manualSection');
 const csvSection = document.getElementById('csvSection');
 const approvalSection = document.getElementById('approvalSection');
 const knowledgeBaseSection = document.getElementById('knowledgeBaseSection');
+
+// Modal elements
+const createEntryBtn = document.getElementById('createEntryBtn');
+const manualEntryModal = document.getElementById('manualEntryModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
 const uploadZone = document.getElementById('uploadZone');
 const csvFileInput = document.getElementById('csvFileInput');
 const csvStatus = document.getElementById('csvStatus');
@@ -47,7 +51,9 @@ const rejectAllBtn = document.getElementById('rejectAllBtn');
 let currentCSVData = null;
 
 // Check if an entity already exists in the knowledge base
-function checkForDuplicateInKB(entityName, entityType) {
+function checkForDuplicateInKB(entityName, entityType, wikidataId = null) {
+    console.log(`🔍 Checking for duplicate: "${entityName}" (${entityType}) with Wikidata ID: ${wikidataId}`);
+    
     const kbData = getKnowledgeBaseData();
     
     // Map entity types to knowledge base data keys
@@ -60,6 +66,7 @@ function checkForDuplicateInKB(entityName, entityType) {
     const kbKey = entityTypeMapping[entityType] || entityType + 's';
     const entities = kbData[kbKey] || [];
     
+    console.log(`🔍 Checking against ${entities.length} existing ${kbKey}`);
     
     // Check for exact name match
     const exactMatch = entities.find(entity => 
@@ -67,6 +74,7 @@ function checkForDuplicateInKB(entityName, entityType) {
     );
     
     if (exactMatch) {
+        console.log(`✅ Found exact name match: ${exactMatch.name}`);
         return { type: 'exact', entity: exactMatch };
     }
     
@@ -78,18 +86,23 @@ function checkForDuplicateInKB(entityName, entityType) {
     );
     
     if (aliasMatch) {
+        console.log(`✅ Found alias match: ${aliasMatch.name} (alias: ${entityName})`);
         return { type: 'alias', entity: aliasMatch };
     }
     
-    // Check for Wikidata ID match (if available)
-    const wikidataMatch = entities.find(entity => 
-        entity.wikidata_id && entity.id && entity.id.includes('wikidata_')
-    );
-    
-    if (wikidataMatch) {
-        return { type: 'wikidata', entity: wikidataMatch };
+    // Check for Wikidata ID match (ONLY if we have a Wikidata ID to compare)
+    if (wikidataId) {
+        const wikidataMatch = entities.find(entity => 
+            entity.wikidata_id && entity.wikidata_id === wikidataId
+        );
+        
+        if (wikidataMatch) {
+            console.log(`✅ Found Wikidata ID match: ${wikidataMatch.name} (${wikidataId})`);
+            return { type: 'wikidata', entity: wikidataMatch };
+        }
     }
     
+    console.log(`❌ No duplicate found for: ${entityName}`);
     return null;
 }
 
@@ -110,6 +123,7 @@ function filterOutDuplicates(enrichedData) {
         
         entities.forEach(entity => {
             const entityName = entity.name || entity.originalName;
+            const wikidataId = entity.wikidata_id || null;
             
             // Map plural entity types to singular
             const pluralToSingular = {
@@ -119,7 +133,9 @@ function filterOutDuplicates(enrichedData) {
             };
             const singularType = pluralToSingular[entityType] || entityType.slice(0, -1);
             
-            const duplicate = checkForDuplicateInKB(entityName, singularType);
+            console.log(`🔍 Processing entity: ${entityName} (${singularType}) with Wikidata ID: ${wikidataId}`);
+            
+            const duplicate = checkForDuplicateInKB(entityName, singularType, wikidataId);
             
             if (duplicate) {
                 duplicates.push({
@@ -129,10 +145,11 @@ function filterOutDuplicates(enrichedData) {
                     entityType: singularType,
                     originalName: entityName
                 });
-                console.log(`🔍 Duplicate found: ${entityName} (${duplicate.type} match)`);
+                console.log(`🔍 Duplicate found: ${entityName} (${duplicate.type} match) → matched to: ${duplicate.entity.name}`);
             } else {
                 // No duplicate, add to approval queue
                 filteredData[entityType].push(entity);
+                console.log(`✅ Adding to approval queue: ${entityName}`);
             }
         });
     });
@@ -157,26 +174,139 @@ function updateCSVTableWithDuplicates(csvData, duplicates) {
     displayCSVData(csvData);
 }
 
-// Event handlers
-function handleEntityTypeChange(newEntityType) {
-    // Update hidden input
-    entityTypeInput.value = newEntityType;
+// Event handlers - removed old entity type tab handling
+
+// Auto-detect entity type from Wikidata ID
+async function handleWikidataDetection() {
+    const wikidataId = wikidataIdDetection.value.trim();
     
-    // Update tab states
-    document.querySelectorAll('.entity-tab-button').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelector(`[data-entity-type="${newEntityType}"]`).classList.add('active');
+    if (!wikidataId) {
+        // Clear form if no Wikidata ID and show manual selection
+        clearDynamicFields();
+        hideEntityTypeIndicator();
+        showManualTypeSelection();
+        return;
+    }
     
-    // Generate new fields
-    generateDynamicFields(newEntityType, dynamicFields);
+    // Validate Wikidata ID format (should be Q followed by numbers)
+    if (!/^Q\d+$/i.test(wikidataId)) {
+        showEntityTypeIndicator('Invalid Wikidata ID format', 'error');
+        return;
+    }
+    
+    try {
+        showEntityTypeIndicator('Detecting entity type...', 'loading');
+        
+        // Import the function we need
+        const { getWikidataEntityDetails } = await import('./wikidataIntegration.js');
+        
+        // Get entity details from Wikidata
+        const entityDetails = await getWikidataEntityDetails(wikidataId.toUpperCase(), '');
+        
+        if (!entityDetails || !entityDetails.found) {
+            showEntityTypeIndicator('Entity not found on Wikidata', 'error');
+            clearDynamicFields();
+            return;
+        }
+        
+        const detectedEntityType = entityDetails.entityType;
+        console.log('🔍 Detected entity type:', detectedEntityType);
+        
+        // Update the form based on detected type
+        if (detectedEntityType && ['person', 'place', 'organization'].includes(detectedEntityType)) {
+            const entityTypeMapping = {
+                'person': 'people',
+                'place': 'places', 
+                'organization': 'organizations'
+            };
+            
+            const formEntityType = entityTypeMapping[detectedEntityType];
+            entityTypeInput.value = formEntityType;
+            
+            // Show detected type
+            const typeLabels = {
+                'people': '👤 Person',
+                'places': '📍 Place',
+                'organizations': '🏢 Organization'
+            };
+            
+            showEntityTypeIndicator(`Detected: ${typeLabels[formEntityType]}`, 'success');
+            hideManualTypeSelection();
+            
+            // Generate form fields for the detected type
+            generateDynamicFields(formEntityType, dynamicFields);
+            
+            // Auto-fill the form with Wikidata data
+            setTimeout(() => {
+                const wikidataInput = document.getElementById('wikidata_id');
+                if (wikidataInput) {
+                    wikidataInput.value = wikidataId.toUpperCase();
+                    // Trigger the autofill
+                    wikidataInput.dispatchEvent(new Event('blur'));
+                }
+            }, 100);
+            
+        } else {
+            showEntityTypeIndicator('Could not determine entity type', 'error');
+            clearDynamicFields();
+        }
+        
+    } catch (error) {
+        console.error('Error detecting entity type:', error);
+        showEntityTypeIndicator('Error detecting entity type', 'error');
+        clearDynamicFields();
+    }
 }
 
-function handleEntityTabClick(event) {
-    const entityType = event.target.getAttribute('data-entity-type');
-    if (entityType) {
-        handleEntityTypeChange(entityType);
+// Helper functions for entity type indicator
+function showEntityTypeIndicator(message, type) {
+    if (entityTypeIndicator && detectedType) {
+        detectedType.textContent = message;
+        entityTypeIndicator.className = `entity-type-indicator ${type}`;
+        entityTypeIndicator.classList.remove('hidden');
     }
+}
+
+function hideEntityTypeIndicator() {
+    if (entityTypeIndicator) {
+        entityTypeIndicator.classList.add('hidden');
+    }
+}
+
+function clearDynamicFields() {
+    if (dynamicFields) {
+        dynamicFields.innerHTML = '';
+    }
+    entityTypeInput.value = '';
+}
+
+function showManualTypeSelection() {
+    if (manualTypeSelection) {
+        manualTypeSelection.classList.remove('hidden');
+    }
+}
+
+function hideManualTypeSelection() {
+    if (manualTypeSelection) {
+        manualTypeSelection.classList.add('hidden');
+    }
+}
+
+// Handle manual entity type selection
+function handleManualTypeSelection(entityType) {
+    entityTypeInput.value = entityType;
+    
+    const typeLabels = {
+        'people': '👤 Person',
+        'places': '📍 Place',
+        'organizations': '🏢 Organization'
+    };
+    
+    showEntityTypeIndicator(`Selected: ${typeLabels[entityType]}`, 'success');
+    hideManualTypeSelection();
+    
+    // Generate form fields for the selected type
+    generateDynamicFields(entityType, dynamicFields);
 }
 
 async function handleSubmit(e) {
@@ -184,7 +314,7 @@ async function handleSubmit(e) {
     
     const entityType = entityTypeInput.value;
     if (!entityType) {
-        showStatus('Please select an entity type.', 'error', statusDiv);
+        showStatus('Please enter a Wikidata ID to detect entity type, or manually enter entity information.', 'error', statusDiv);
         return;
     }
     
@@ -209,10 +339,16 @@ async function handleSubmit(e) {
         
         // Reset form after successful submission
         form.reset();
-        generateDynamicFields(entityType, dynamicFields);
+        clearDynamicFields();
+        hideEntityTypeIndicator();
+        showManualTypeSelection();
         
-        // Auto-load data to show the new entry
-        setTimeout(() => handleLoadData(), 1000);
+        // Close modal after successful submission
+        setTimeout(() => {
+            closeModal();
+            // Switch to knowledge base tab to show the new entry
+            switchToKnowledgeBaseTab();
+        }, 1500);
         
     } catch (error) {
         console.error('Error adding document: ', error);
@@ -251,36 +387,46 @@ async function handleLoadData() {
 
 function handleReset() {
     form.reset();
-    dynamicFields.innerHTML = '';
+    clearDynamicFields();
+    hideEntityTypeIndicator();
+    showManualTypeSelection();
     statusDiv.style.display = 'none';
     showStatus('Form reset successfully.', 'success', statusDiv);
 }
 
-// Tab switching handlers
-function switchToManualTab() {
-    // Update tab states
-    manualTab.classList.add('active');
-    csvTab.classList.remove('active');
-    approvalTab.classList.remove('active');
-    knowledgeBaseTab.classList.remove('active');
-    
-    // Update section visibility
-    manualSection.classList.add('active');
-    csvSection.classList.remove('active');
-    approvalSection.classList.remove('active');
-    knowledgeBaseSection.classList.remove('active');
+// Modal functions
+function openModal() {
+    console.log('🔧 Opening modal...');
+    console.log('🔧 Modal element:', manualEntryModal);
+    if (manualEntryModal) {
+        manualEntryModal.classList.add('show');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        
+        // Reset form state when opening
+        clearDynamicFields();
+        hideEntityTypeIndicator();
+        showManualTypeSelection();
+        
+        console.log('✅ Modal opened successfully');
+    } else {
+        console.error('❌ Modal element not found!');
+    }
 }
 
+function closeModal() {
+    manualEntryModal.classList.remove('show');
+    document.body.style.overflow = ''; // Restore scrolling
+}
+
+// Tab switching handlers
 function switchToCSVTab() {
     // Update tab states
     csvTab.classList.add('active');
-    manualTab.classList.remove('active');
     approvalTab.classList.remove('active');
     knowledgeBaseTab.classList.remove('active');
     
     // Update section visibility
     csvSection.classList.add('active');
-    manualSection.classList.remove('active');
     approvalSection.classList.remove('active');
     knowledgeBaseSection.classList.remove('active');
 }
@@ -293,13 +439,11 @@ function switchToApprovalTab() {
     
     // Update tab states
     approvalTab.classList.add('active');
-    manualTab.classList.remove('active');
     csvTab.classList.remove('active');
     knowledgeBaseTab.classList.remove('active');
     
     // Update section visibility
     approvalSection.classList.add('active');
-    manualSection.classList.remove('active');
     csvSection.classList.remove('active');
     knowledgeBaseSection.classList.remove('active');
 }
@@ -307,13 +451,11 @@ function switchToApprovalTab() {
 function switchToKnowledgeBaseTab() {
     // Update tab states
     knowledgeBaseTab.classList.add('active');
-    manualTab.classList.remove('active');
     csvTab.classList.remove('active');
     approvalTab.classList.remove('active');
     
     // Update section visibility
     knowledgeBaseSection.classList.add('active');
-    manualSection.classList.remove('active');
     csvSection.classList.remove('active');
     approvalSection.classList.remove('active');
     
@@ -345,6 +487,10 @@ function updateApprovalTabState(hasContent) {
 
 // Make updateApprovalTabState available globally for approvalQueue.js
 window.updateApprovalTabState = updateApprovalTabState;
+
+// Make modal functions available globally for debugging
+window.openModal = openModal;
+window.closeModal = closeModal;
 
 // CSV upload handlers
 function handleUploadZoneClick() {
@@ -484,16 +630,65 @@ function clearCSVData() {
 
 // Initialize event listeners
 function initializeEventListeners() {
+    console.log('🔧 Initializing event listeners...');
+    console.log('🔧 Create Entry Button:', createEntryBtn);
+    console.log('🔧 Close Modal Button:', closeModalBtn);
+    console.log('🔧 Manual Entry Modal:', manualEntryModal);
+    
+    // Modal listeners
+    if (createEntryBtn) {
+        createEntryBtn.addEventListener('click', openModal);
+        console.log('✅ Create Entry button listener added');
+    } else {
+        console.error('❌ Create Entry button not found!');
+    }
+    
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeModal);
+        console.log('✅ Close Modal button listener added');
+    } else {
+        console.error('❌ Close Modal button not found!');
+    }
+    
+    // Close modal when clicking outside
+    if (manualEntryModal) {
+        manualEntryModal.addEventListener('click', (e) => {
+            if (e.target === manualEntryModal) {
+                closeModal();
+            }
+        });
+        console.log('✅ Modal overlay click listener added');
+    }
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && manualEntryModal && manualEntryModal.classList.contains('show')) {
+            closeModal();
+        }
+    });
+    console.log('✅ Escape key listener added');
+    
     // Manual form listeners
-    peopleEntityTab.addEventListener('click', handleEntityTabClick);
-    placesEntityTab.addEventListener('click', handleEntityTabClick);
-    organizationsEntityTab.addEventListener('click', handleEntityTabClick);
+    if (wikidataIdDetection) {
+        wikidataIdDetection.addEventListener('input', handleWikidataDetection);
+        wikidataIdDetection.addEventListener('blur', handleWikidataDetection);
+    }
+    
+    // Manual type selection listeners
+    document.querySelectorAll('.manual-type-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const entityType = e.target.getAttribute('data-type');
+            if (entityType) {
+                handleManualTypeSelection(entityType);
+            }
+        });
+    });
+    
     form.addEventListener('submit', handleSubmit);
     loadBtn.addEventListener('click', handleLoadData);
     resetBtn.addEventListener('click', handleReset);
     
     // Tab listeners
-    manualTab.addEventListener('click', switchToManualTab);
     csvTab.addEventListener('click', switchToCSVTab);
     approvalTab.addEventListener('click', switchToApprovalTab);
     knowledgeBaseTab.addEventListener('click', switchToKnowledgeBaseTab);
@@ -523,13 +718,16 @@ function initializeApp() {
     console.log('Knowledge Base Firebase Writer loaded');
     initializeEventListeners();
     
-    // Initialize with default entity type (people)
+    // Initialize with default entity type (people) for the modal
     handleEntityTypeChange('people');
+    
+    // Start with CSV tab active instead of manual tab
+    switchToCSVTab();
     
     // Initialize approval tab as disabled
     updateApprovalTabState(false);
     
-    showStatus('Ready to create knowledge base entries!', 'success', statusDiv);
+    showStatus('Ready to upload CSV files and create knowledge base entries!', 'success', document.getElementById('csvStatus'));
 }
 
 // Start the app when DOM is loaded

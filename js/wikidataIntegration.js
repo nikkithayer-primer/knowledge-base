@@ -84,6 +84,7 @@ export async function getWikidataEntityDetails(entityId, originalName) {
             SELECT DISTINCT ?item ?itemLabel ?itemDescription ?instanceOf ?instanceOfLabel 
                    ?countryLabel ?locationLabel ?occupationLabel ?employerLabel 
                    ?birthDate ?founded ?population ?coordinates ?wikidataId
+                   ?sportLabel ?leagueLabel ?stadiumLabel ?coachLabel ?conferenceLabel ?divisionLabel
             WHERE {
                 VALUES ?item { wd:${entityId} }
                 
@@ -96,6 +97,14 @@ export async function getWikidataEntityDetails(entityId, originalName) {
                 OPTIONAL { ?item wdt:P571 ?founded . }
                 OPTIONAL { ?item wdt:P1082 ?population . }
                 OPTIONAL { ?item wdt:P625 ?coordinates . }
+                
+                # Sports-specific properties
+                OPTIONAL { ?item wdt:P641 ?sport . }
+                OPTIONAL { ?item wdt:P118 ?league . }
+                OPTIONAL { ?item wdt:P115 ?stadium . }
+                OPTIONAL { ?item wdt:P286 ?coach . }
+                OPTIONAL { ?item wdt:P361 ?conference . }
+                OPTIONAL { ?item wdt:P361 ?division . }
                 
                 BIND(STRAFTER(STR(?item), "http://www.wikidata.org/entity/") AS ?wikidataId)
                 
@@ -212,17 +221,34 @@ function processWikidataResult(binding, originalName, entityType = null, allInst
             description: result.description
         };
     } else if (result.entityType === 'organization') {
+        // Determine if this is a sports team based on instanceOf values
+        const isSportsTeam = allInstanceOf.some(instance => 
+            instance.toLowerCase().includes('team') || 
+            instance.toLowerCase().includes('club') ||
+            instance.toLowerCase().includes('sports')
+        );
+        
         result.organization = {
             id: `wikidata_${result.wikidataId}`,
             name: result.name,
             aliases: [originalName],
             type: 'organization',
-            category: binding.instanceOfLabel?.value || 'organization',
+            category: isSportsTeam ? 'sports team' : (binding.instanceOfLabel?.value || 'organization'),
             founded: binding.founded?.value ? new Date(binding.founded.value).getFullYear() : null,
             location: binding.locationLabel?.value || binding.countryLabel?.value || '',
             wikidata_id: result.wikidataId,
             description: result.description
         };
+        
+        // Add sports-specific fields if this is a sports team
+        if (isSportsTeam) {
+            result.organization.sport = binding.sportLabel?.value || '';
+            result.organization.league = binding.leagueLabel?.value || '';
+            result.organization.stadium = binding.stadiumLabel?.value || '';
+            result.organization.coach = binding.coachLabel?.value || '';
+            result.organization.conference = binding.conferenceLabel?.value || '';
+            result.organization.division = binding.divisionLabel?.value || '';
+        }
     }
     
     console.log('🔍 Final result structure:', {
@@ -290,7 +316,19 @@ function determineEntityTypeFromMultiple(instanceOfValues) {
         combinedInstances.includes('association') ||
         combinedInstances.includes('league') ||
         combinedInstances.includes('cooperation') ||
-        combinedInstances.includes('summit')) {
+        combinedInstances.includes('summit') ||
+        combinedInstances.includes('sports team') ||
+        combinedInstances.includes('football team') ||
+        combinedInstances.includes('basketball team') ||
+        combinedInstances.includes('baseball team') ||
+        combinedInstances.includes('soccer team') ||
+        combinedInstances.includes('hockey team') ||
+        combinedInstances.includes('sports club') ||
+        combinedInstances.includes('football club') ||
+        combinedInstances.includes('soccer club') ||
+        combinedInstances.includes('athletic club') ||
+        combinedInstances.includes('club') ||
+        combinedInstances.includes('team')) {
         console.log('🔍 Detected as ORGANIZATION based on:', instanceOfValues);
         return 'organization';
     }

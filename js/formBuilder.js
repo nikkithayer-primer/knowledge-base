@@ -28,9 +28,10 @@ export function generateDynamicFields(entityType, dynamicFields) {
         
         group.fields.forEach(field => {
             const fieldDiv = document.createElement('div');
-            fieldDiv.className = getFieldClassName(field);
+            fieldDiv.className = getCompactFieldClassName(field);
             
             const label = document.createElement('label');
+            label.className = 'form-label';
             label.textContent = formatFieldName(field.name);
             
             // Set the 'for' attribute based on field type
@@ -42,10 +43,10 @@ export function generateDynamicFields(entityType, dynamicFields) {
             }
             
             if (field.required) {
-                label.textContent += ' *';
+                label.classList.add('required');
             }
             
-            let input = createFieldInput(field);
+            let input = createCompactFieldInput(field);
             
             fieldDiv.appendChild(label);
             fieldDiv.appendChild(input);
@@ -61,6 +62,13 @@ export function generateDynamicFields(entityType, dynamicFields) {
                 input.addEventListener('blur', handleWikidataAutofill);
             }
             
+            // Add event listener for category changes to toggle sports fields
+            if (field.name === 'category') {
+                input.addEventListener('change', function() {
+                    toggleSportsFields(this.value);
+                });
+            }
+            
             fieldsContainer.appendChild(fieldDiv);
         });
         
@@ -69,7 +77,7 @@ export function generateDynamicFields(entityType, dynamicFields) {
     });
 }
 
-// Organize fields into logical groups for better layout
+// Organize fields into logical groups with compact grid layouts
 function organizeFieldsIntoGroups(fields) {
     const groups = [];
     
@@ -84,21 +92,57 @@ function organizeFieldsIntoGroups(fields) {
         fieldsByGroup[groupName].push(field);
     });
     
-    // Define the order of groups
-    const groupOrder = ['basic', 'personal', 'professional', 'education', 'location', 'classification', 'geographic', 'demographics', 'details', 'legacy', 'other'];
+    // Define the order of groups with compact layouts
+    const groupOrder = ['basic', 'personal', 'professional', 'education', 'location', 'classification', 'geographic', 'demographics', 'details', 'sports', 'legacy', 'other'];
     
-    // Create groups in the defined order
+    // Create groups with intelligent grid layouts
     groupOrder.forEach(groupName => {
         if (fieldsByGroup[groupName] && fieldsByGroup[groupName].length > 0) {
+            const groupFields = fieldsByGroup[groupName];
+            const gridLayout = determineOptimalGridLayout(groupFields);
+            
+            // Add conditional visibility for sports fields
+            let className = `field-group ${groupName}-group ${gridLayout}`;
+            if (groupName === 'sports') {
+                className += ' sports-fields-group';
+                // Initially hide sports fields
+                className += ' hidden';
+            }
+            
             groups.push({
-                className: `field-group ${groupName}-group`,
-                title: formatGroupName(groupName),
-                fields: fieldsByGroup[groupName]
+                className: className,
+                title: null, // Remove group titles for more compact layout
+                fields: groupFields
             });
         }
     });
     
     return groups;
+}
+
+// Determine optimal grid layout based on field types and count
+function determineOptimalGridLayout(fields) {
+    const shortFields = fields.filter(f => 
+        f.type !== 'textarea' && 
+        f.name !== 'description' && 
+        f.type !== 'array'
+    );
+    
+    const longFields = fields.filter(f => 
+        f.type === 'textarea' || 
+        f.name === 'description' || 
+        f.type === 'array'
+    );
+    
+    // If mostly short fields, use grid layout
+    if (shortFields.length >= 2 && longFields.length === 0) {
+        if (shortFields.length === 2) return 'form-grid-2';
+        if (shortFields.length === 3) return 'form-grid-3';
+        if (shortFields.length >= 4) return 'form-grid-2'; // Use 2-column for many fields
+    }
+    
+    // Mixed or mostly long fields use default single column
+    return '';
 }
 
 // Format group names for display
@@ -120,7 +164,7 @@ function formatGroupName(groupName) {
     return groupTitles[groupName] || groupName.charAt(0).toUpperCase() + groupName.slice(1);
 }
 
-// Get appropriate CSS class for field based on type and layout
+// Get appropriate CSS class for field based on type and layout (legacy)
 function getFieldClassName(field) {
     const baseClass = 'form-field';
     
@@ -142,6 +186,28 @@ function getFieldClassName(field) {
     return `${baseClass}`;
 }
 
+// Get compact CSS class for modal fields
+function getCompactFieldClassName(field) {
+    let className = 'form-group';
+    
+    // Full width fields (take entire row)
+    if (field.type === 'textarea' || field.name === 'description' || field.type === 'array') {
+        className += ' full-width';
+    }
+    
+    // Very short fields can be inline
+    if (field.type === 'number' && (field.name.includes('year') || field.name.includes('age'))) {
+        className += ' compact inline';
+    }
+    
+    // Date fields are compact
+    if (field.type === 'date') {
+        className += ' compact';
+    }
+    
+    return className;
+}
+
 // Create appropriate input for field type
 function createFieldInput(field) {
     if (field.type === 'array') {
@@ -155,6 +221,26 @@ function createFieldInput(field) {
     } else {
         return createInputField(field);
     }
+}
+
+// Create compact input for modal forms
+function createCompactFieldInput(field) {
+    let input;
+    
+    if (field.type === 'array') {
+        input = createArrayField(field);
+    } else if (field.type === 'select') {
+        input = createSelectField(field);
+        input.className = 'form-select';
+    } else if (field.type === 'textarea') {
+        input = createTextareaField(field);
+        input.className = field.name === 'description' ? 'form-textarea' : 'form-textarea compact';
+    } else {
+        input = createInputField(field);
+        input.className = 'form-input';
+    }
+    
+    return input;
 }
 
 function createInputField(field) {
@@ -363,7 +449,13 @@ function autofillFormFields(entityData, wikidataId) {
         'founded': 'founded',
         'location': 'location',
         'currentEmployer': 'currentEmployer',
-        'state': 'state'
+        'state': 'state',
+        'sport': 'sport',
+        'league': 'league',
+        'stadium': 'stadium',
+        'coach': 'coach',
+        'conference': 'conference',
+        'division': 'division'
     };
     
     // Fill in the fields
@@ -388,6 +480,10 @@ function autofillFormFields(entityData, wikidataId) {
                 );
                 if (option) {
                     input.value = option.value;
+                    // If this is the category field and it's a sports team, show sports fields
+                    if (formField === 'category' && option.value === 'sports team') {
+                        toggleSportsFields('sports team');
+                    }
                 }
             } else {
                 input.value = value;
@@ -456,4 +552,18 @@ function showAutofillFeedback(inputElement, type, message) {
             feedback.parentNode.removeChild(feedback);
         }
     }, 3000);
+}
+
+// Toggle sports fields visibility based on category selection
+function toggleSportsFields(category) {
+    const sportsFieldsGroup = document.querySelector('.sports-fields-group');
+    if (sportsFieldsGroup) {
+        if (category === 'sports team') {
+            sportsFieldsGroup.classList.remove('hidden');
+            console.log('🏈 Showing sports fields');
+        } else {
+            sportsFieldsGroup.classList.add('hidden');
+            console.log('🏢 Hiding sports fields');
+        }
+    }
 }
