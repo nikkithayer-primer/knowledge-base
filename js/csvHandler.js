@@ -256,9 +256,6 @@ export function createCSVTable(csvData) {
         tableHTML += `<th>${escapeHtml(column)}</th>`;
     });
     
-    // Add status column for duplicates
-    tableHTML += `<th>Status</th>`;
-    
     tableHTML += `
                     </tr>
                 </thead>
@@ -310,13 +307,6 @@ export function createCSVTable(csvData) {
             
             tableHTML += `<td>${processedValue}</td>`;
         });
-        
-        // Add status column
-        if (hasDuplicate) {
-            tableHTML += `<td class="status-cell duplicate-status">🔍 Duplicate Found</td>`;
-        } else {
-            tableHTML += `<td class="status-cell new-status">✨ New Entity</td>`;
-        }
         
         tableHTML += '</tr>';
     });

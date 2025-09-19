@@ -680,7 +680,7 @@
     gap: var(--space-2);
 }
 
-.approve-btn, .reject-btn {
+.approve-btn, .reject-btn, .map-btn {
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-sm);
     font-size: var(--font-size-sm);
@@ -714,6 +714,18 @@
 .reject-btn:hover:not(:disabled) {
     background: var(--error-button);
     color: var(--white);
+}
+
+.map-btn {
+    background: var(--white);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.map-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: var(--white);
+    border-color: var(--primary-color);
 }
 
 .entity-details {
@@ -824,7 +836,7 @@
         justify-content: stretch;
     }
     
-    .approve-btn, .reject-btn {
+    .approve-btn, .reject-btn, .map-btn {
         flex: 1;
     }
 }

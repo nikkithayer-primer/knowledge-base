@@ -104,6 +104,7 @@ function createEntityCard(item) {
                         <div class="original-name">Not found in Wikidata</div>
                     </div>
                     <div class="entity-actions">
+                        <button class="map-btn" data-action="map" data-id="${item.id}">🔗 Map to Wikidata</button>
                         <button class="reject-btn" data-action="reject" data-id="${item.id}">✗ Reject</button>
                     </div>
                 </div>
@@ -262,10 +263,90 @@ function createEntityDetails(entity, wikidataInfo) {
 
 // Add event listeners for approval actions
 function addApprovalEventListeners() {
-    // Individual approve/reject buttons
-    document.querySelectorAll('.approve-btn, .reject-btn').forEach(button => {
+    // Individual approve/reject/map buttons
+    document.querySelectorAll('.approve-btn, .reject-btn, .map-btn').forEach(button => {
         button.addEventListener('click', handleEntityAction);
     });
+}
+
+// Handle mapping unknown entity to Wikidata
+async function handleMapToWikidata(item) {
+    const wikidataId = prompt(
+        `Enter Wikidata ID to map "${item.originalName}" to:\n\n` +
+        `Example: Q62 for San Francisco\n` +
+        `You can find Wikidata IDs by searching on wikidata.org`
+    );
+    
+    if (!wikidataId) return; // User cancelled
+    
+    // Validate Wikidata ID format
+    if (!/^Q\d+$/i.test(wikidataId.trim())) {
+        alert('Invalid Wikidata ID format. Please enter an ID like Q123456');
+        return;
+    }
+    
+    const cleanId = wikidataId.trim().toUpperCase();
+    
+    try {
+        console.log(`🔗 Mapping "${item.originalName}" to Wikidata ID: ${cleanId}`);
+        
+        // Import the Wikidata integration function
+        const { enrichEntityWithWikidata } = await import('./wikidataIntegration.js');
+        
+        // Create a temporary entity object for enrichment
+        const tempEntity = {
+            originalName: item.originalName,
+            wikidata_id: cleanId
+        };
+        
+        // Enrich with Wikidata
+        const enrichedEntity = await enrichEntityWithWikidata(tempEntity);
+        
+        if (!enrichedEntity || !enrichedEntity.name) {
+            alert(`Failed to fetch data for Wikidata ID: ${cleanId}`);
+            return;
+        }
+        
+        // Check if the original name matches the Wikidata name
+        const originalName = item.originalName.toLowerCase().trim();
+        const wikidataName = enrichedEntity.name.toLowerCase().trim();
+        
+        // Add original name as alias if it's different from the Wikidata name
+        if (originalName !== wikidataName) {
+            if (!enrichedEntity.aliases) {
+                enrichedEntity.aliases = [];
+            }
+            
+            // Check if the original name is already in aliases
+            const aliasExists = enrichedEntity.aliases.some(alias => 
+                alias.toLowerCase().trim() === originalName
+            );
+            
+            if (!aliasExists) {
+                enrichedEntity.aliases.push(item.originalName);
+                console.log(`📝 Added "${item.originalName}" as alias to "${enrichedEntity.name}"`);
+            }
+        }
+        
+        // Update the approval queue item
+        item.entity = enrichedEntity;
+        item.entityType = enrichedEntity.type;
+        item.wikidataInfo = {
+            ...item.wikidataInfo,
+            wikidata_id: cleanId,
+            mapped: true,
+            mappedBy: 'user'
+        };
+        
+        console.log(`✅ Successfully mapped "${item.originalName}" to "${enrichedEntity.name}" (${cleanId})`);
+        
+        // Re-render the approval queue to show the updated entity
+        renderApprovalQueue();
+        
+    } catch (error) {
+        console.error(`Error mapping to Wikidata ID ${cleanId}:`, error);
+        alert(`Error fetching Wikidata entity: ${error.message}`);
+    }
 }
 
 // Handle individual entity approval/rejection
@@ -299,6 +380,10 @@ async function handleEntityAction(event) {
         approvalStats.rejected++;
         
         console.log(`❌ Rejected: ${item.originalName}`);
+    } else if (action === 'map') {
+        // Handle mapping unknown entity to Wikidata
+        await handleMapToWikidata(item);
+        return; // Don't re-render yet, let the mapping function handle it
     }
     
     // Update UI
@@ -386,6 +471,12 @@ function updateApprovalControls() {
         approvalStatsSpan.textContent = 'No entities to review';
     } else {
         approvalStatsSpan.textContent = `${approvalStats.pending} pending, ${approvalStats.approved} approved, ${approvalStats.rejected} rejected`;
+    }
+    
+    // Update approval tab state based on pending items
+    // This function will be available globally from main.js
+    if (typeof window.updateApprovalTabState === 'function') {
+        window.updateApprovalTabState(hasPending);
     }
 }
 

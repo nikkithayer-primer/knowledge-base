@@ -79,7 +79,7 @@ export async function searchWikidataEntity(entityName) {
 // Get detailed information about a Wikidata entity
 export async function getWikidataEntityDetails(entityId, originalName) {
     try {
-        // SPARQL query to get comprehensive information
+        // SPARQL query to get comprehensive information including ALL instanceOf values
         const sparqlQuery = `
             SELECT DISTINCT ?item ?itemLabel ?itemDescription ?instanceOf ?instanceOfLabel 
                    ?countryLabel ?locationLabel ?occupationLabel ?employerLabel 
@@ -101,7 +101,6 @@ export async function getWikidataEntityDetails(entityId, originalName) {
                 
                 SERVICE wikibase:label { bd:serviceParam wikibase:language "en" . }
             }
-            LIMIT 1
         `;
         
         const sparqlUrl = `${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(sparqlQuery)}&format=json`;
@@ -118,8 +117,8 @@ export async function getWikidataEntityDetails(entityId, originalName) {
             };
         }
         
-        const binding = data.results.bindings[0];
-        return processWikidataResult(binding, originalName);
+        // Process all bindings to collect all instanceOf values and other data
+        return processWikidataResults(data.results.bindings, originalName);
         
     } catch (error) {
         console.error(`Error getting details for ${entityId}:`, error);
@@ -133,14 +132,45 @@ export async function getWikidataEntityDetails(entityId, originalName) {
     }
 }
 
-// Process Wikidata SPARQL result into our entity format
-function processWikidataResult(binding, originalName) {
-    const instanceOfValue = binding.instanceOfLabel?.value;
-    const entityType = determineEntityType(instanceOfValue);
+// Process multiple Wikidata SPARQL results into our entity format
+function processWikidataResults(bindings, originalName) {
+    if (!bindings || bindings.length === 0) {
+        return {
+            originalName,
+            found: false,
+            entityType: 'unknown'
+        };
+    }
+    
+    // Collect all instanceOf values from all bindings
+    const instanceOfValues = [];
+    let primaryBinding = bindings[0]; // Use first binding for other properties
+    
+    bindings.forEach(binding => {
+        if (binding.instanceOfLabel?.value) {
+            instanceOfValues.push(binding.instanceOfLabel.value);
+        }
+    });
+    
+    console.log('🔍 All instanceOf values found:', instanceOfValues);
+    
+    // Determine entity type from all instance values
+    const entityType = determineEntityTypeFromMultiple(instanceOfValues);
+    
+    return processWikidataResult(primaryBinding, originalName, entityType, instanceOfValues);
+}
+
+// Process single Wikidata SPARQL result with predetermined entity type
+function processWikidataResult(binding, originalName, entityType = null, allInstanceOf = []) {
+    // If entityType not provided, determine from single instanceOf value (legacy)
+    if (!entityType) {
+        const instanceOfValue = binding.instanceOfLabel?.value;
+        entityType = determineEntityType(instanceOfValue);
+    }
     
     console.log('🔍 Processing Wikidata result:');
     console.log('🔍 Original name:', originalName);
-    console.log('🔍 Instance of:', instanceOfValue);
+    console.log('🔍 All instance types:', allInstanceOf.length > 0 ? allInstanceOf : [binding.instanceOfLabel?.value]);
     console.log('🔍 Determined entity type:', entityType);
     
     const result = {
@@ -150,7 +180,7 @@ function processWikidataResult(binding, originalName) {
         name: binding.itemLabel?.value || originalName,
         description: binding.itemDescription?.value || '',
         entityType: entityType,
-        instanceOf: instanceOfValue || ''
+        instanceOf: allInstanceOf.length > 0 ? allInstanceOf.join('; ') : (binding.instanceOfLabel?.value || '')
     };
     
     // Add type-specific fields based on entity type
@@ -206,57 +236,75 @@ function processWikidataResult(binding, originalName) {
     return result;
 }
 
-// Determine entity type from Wikidata instance type
-function determineEntityType(instanceOf) {
-    if (!instanceOf) return 'unknown';
+// Determine entity type from multiple Wikidata instance types
+function determineEntityTypeFromMultiple(instanceOfValues) {
+    if (!instanceOfValues || instanceOfValues.length === 0) return 'unknown';
     
-    const instanceLower = instanceOf.toLowerCase();
+    console.log('🔍 Determining entity type from multiple values:', instanceOfValues);
     
-    // Person indicators
-    if (instanceLower.includes('human') || 
-        instanceLower.includes('person') || 
-        instanceLower.includes('politician') ||
-        instanceLower.includes('diplomat') ||
-        instanceLower.includes('minister') ||
-        instanceLower.includes('president') ||
-        instanceLower.includes('prime minister') ||
-        instanceLower.includes('spokesperson')) {
+    // Combine all instanceOf values into a single string for analysis
+    const combinedInstances = instanceOfValues.join(' ').toLowerCase();
+    
+    // Priority order: person > place > organization
+    // This ensures that if something is both a person and has other types, person takes precedence
+    
+    // Person indicators (highest priority)
+    if (combinedInstances.includes('human') || 
+        combinedInstances.includes('person') || 
+        combinedInstances.includes('politician') ||
+        combinedInstances.includes('diplomat') ||
+        combinedInstances.includes('minister') ||
+        combinedInstances.includes('president') ||
+        combinedInstances.includes('prime minister') ||
+        combinedInstances.includes('spokesperson')) {
+        console.log('🔍 Detected as PERSON based on:', instanceOfValues);
         return 'person';
     }
     
-    // Place indicators
-    if (instanceLower.includes('city') || 
-        instanceLower.includes('country') || 
-        instanceLower.includes('state') ||
-        instanceLower.includes('capital') ||
-        instanceLower.includes('municipality') ||
-        instanceLower.includes('emirate') ||
-        instanceLower.includes('region') ||
-        instanceLower.includes('territory') ||
-        instanceLower.includes('place') ||
-        instanceLower.includes('location') ||
-        instanceLower.includes('building') ||
-        instanceLower.includes('university') ||
-        instanceLower.includes('office')) {
+    // Place indicators (medium priority)
+    if (combinedInstances.includes('city') || 
+        combinedInstances.includes('country') || 
+        combinedInstances.includes('state') ||
+        combinedInstances.includes('capital') ||
+        combinedInstances.includes('municipality') ||
+        combinedInstances.includes('emirate') ||
+        combinedInstances.includes('region') ||
+        combinedInstances.includes('territory') ||
+        combinedInstances.includes('place') ||
+        combinedInstances.includes('location') ||
+        combinedInstances.includes('building') ||
+        combinedInstances.includes('university') ||
+        combinedInstances.includes('office')) {
+        console.log('🔍 Detected as PLACE based on:', instanceOfValues);
         return 'place';
     }
     
-    // Organization indicators
-    if (instanceLower.includes('organization') || 
-        instanceLower.includes('company') || 
-        instanceLower.includes('government') ||
-        instanceLower.includes('ministry') ||
-        instanceLower.includes('council') ||
-        instanceLower.includes('agency') ||
-        instanceLower.includes('institution') ||
-        instanceLower.includes('association') ||
-        instanceLower.includes('league') ||
-        instanceLower.includes('cooperation') ||
-        instanceLower.includes('summit')) {
+    // Organization indicators (lowest priority)
+    if (combinedInstances.includes('organization') || 
+        combinedInstances.includes('company') || 
+        combinedInstances.includes('government') ||
+        combinedInstances.includes('ministry') ||
+        combinedInstances.includes('council') ||
+        combinedInstances.includes('agency') ||
+        combinedInstances.includes('institution') ||
+        combinedInstances.includes('association') ||
+        combinedInstances.includes('league') ||
+        combinedInstances.includes('cooperation') ||
+        combinedInstances.includes('summit')) {
+        console.log('🔍 Detected as ORGANIZATION based on:', instanceOfValues);
         return 'organization';
     }
     
+    console.log('🔍 Could not determine type from:', instanceOfValues);
     return 'unknown';
+}
+
+// Determine entity type from single Wikidata instance type (legacy function)
+function determineEntityType(instanceOf) {
+    if (!instanceOf) return 'unknown';
+    
+    // Use the new multiple-value function with a single value
+    return determineEntityTypeFromMultiple([instanceOf]);
 }
 
 // Parse coordinates from Wikidata format
@@ -371,4 +419,46 @@ export async function enrichCSVWithWikidata(csvData) {
     }
     
     return enrichedEntities;
+}
+
+// Enrich a single entity with Wikidata information
+export async function enrichEntityWithWikidata(entity) {
+    try {
+        if (!entity.wikidata_id) {
+            throw new Error('No Wikidata ID provided');
+        }
+        
+        console.log(`🔍 Enriching entity with Wikidata ID: ${entity.wikidata_id}`);
+        
+        // Get detailed information from Wikidata
+        const wikidataResult = await getWikidataEntityDetails(entity.wikidata_id, entity.originalName);
+        
+        if (!wikidataResult || !wikidataResult.found) {
+            throw new Error(`Failed to fetch data for Wikidata ID: ${entity.wikidata_id}`);
+        }
+        
+        // Return the appropriate entity type based on the result
+        if (wikidataResult.entityType === 'person' && wikidataResult.person) {
+            return wikidataResult.person;
+        } else if (wikidataResult.entityType === 'place' && wikidataResult.place) {
+            return wikidataResult.place;
+        } else if (wikidataResult.entityType === 'organization' && wikidataResult.organization) {
+            return wikidataResult.organization;
+        } else {
+            // For unknown or other types, create a generic entity
+            return {
+                id: `wikidata_${wikidataResult.wikidataId}`,
+                name: wikidataResult.name,
+                aliases: [entity.originalName],
+                type: wikidataResult.entityType,
+                wikidata_id: wikidataResult.wikidataId,
+                description: wikidataResult.description,
+                instanceOf: wikidataResult.instanceOf
+            };
+        }
+        
+    } catch (error) {
+        console.error(`Error enriching entity with Wikidata:`, error);
+        throw error;
+    }
 }

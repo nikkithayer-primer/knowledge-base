@@ -286,6 +286,11 @@ function switchToCSVTab() {
 }
 
 function switchToApprovalTab() {
+    // Check if approval tab is disabled
+    if (approvalTab.classList.contains('disabled')) {
+        return; // Don't switch to disabled tab
+    }
+    
     // Update tab states
     approvalTab.classList.add('active');
     manualTab.classList.remove('active');
@@ -315,6 +320,31 @@ function switchToKnowledgeBaseTab() {
     // Load knowledge base data when switching to this tab
     loadKnowledgeBase();
 }
+
+// Update approval tab state based on content availability
+function updateApprovalTabState(hasContent) {
+    if (hasContent) {
+        // Enable the approval tab
+        approvalTab.classList.remove('disabled');
+        approvalTab.style.opacity = '1';
+        approvalTab.style.cursor = 'pointer';
+        approvalTab.title = '';
+    } else {
+        // Disable the approval tab
+        approvalTab.classList.add('disabled');
+        approvalTab.style.opacity = '0.5';
+        approvalTab.style.cursor = 'not-allowed';
+        approvalTab.title = 'Upload a CSV file to populate the approval queue';
+        
+        // If currently on approval tab, switch to CSV tab
+        if (approvalTab.classList.contains('active')) {
+            switchToCSVTab();
+        }
+    }
+}
+
+// Make updateApprovalTabState available globally for approvalQueue.js
+window.updateApprovalTabState = updateApprovalTabState;
 
 // CSV upload handlers
 function handleUploadZoneClick() {
@@ -395,10 +425,8 @@ async function processCSVFile(file) {
                 }
                 showStatus(statusMessage, 'success', csvStatus);
                 
-                // Auto-switch to approval queue if entities were found
-                if (totalFound > 0) {
-                    setTimeout(() => switchToApprovalTab(), 1000);
-                }
+                // Update approval tab state based on content
+                updateApprovalTabState(newEntities > 0);
                 
                 console.log(`🎉 Wikidata enrichment complete! ${totalFound} entities ready for approval.`);
                 
@@ -448,6 +476,9 @@ function clearCSVData() {
     // Reset file input
     csvFileInput.value = '';
     
+    // Disable approval tab since no data is available
+    updateApprovalTabState(false);
+    
     console.log('📄 CSV data cleared');
 }
 
@@ -494,6 +525,10 @@ function initializeApp() {
     
     // Initialize with default entity type (people)
     handleEntityTypeChange('people');
+    
+    // Initialize approval tab as disabled
+    updateApprovalTabState(false);
+    
     showStatus('Ready to create knowledge base entries!', 'success', statusDiv);
 }
 
