@@ -1,5 +1,7 @@
 /* Component styles */
 
+/* Fixed tabs functionality now integrated into header */
+
 /* Modal Styles */
 .modal-overlay {
     position: fixed;
@@ -84,6 +86,7 @@
 /* Header with Create Entry Button */
 .header-content {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: space-between;
     max-width: 1200px;
@@ -373,6 +376,7 @@
     background: var(--white);
     border: 2px solid var(--gray-300);
     border-radius: var(--radius-sm);
+    color: var(--primary-color);
     padding: 8px 12px;
     font-size: 12px;
     font-weight: 500;
@@ -391,6 +395,386 @@
 
 .manual-type-btn:active {
     transform: translateY(1px);
+}
+
+/* Connections Modal Styles */
+.connections-modal {
+    width: 800px;
+    max-width: calc(100vw - 40px);
+}
+
+.connections-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.current-connections h3,
+.add-connection h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gray-800);
+    border-bottom: 2px solid var(--primary-200);
+    padding-bottom: 8px;
+}
+
+/* Current Connections List */
+.connections-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    background: var(--gray-50);
+}
+
+.no-connections {
+    padding: 24px;
+    text-align: center;
+    color: var(--gray-500);
+    font-style: italic;
+}
+
+.connection-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--white);
+    transition: background-color var(--transition-fast);
+}
+
+.connection-item:hover {
+    background: var(--gray-50);
+}
+
+.connection-item:last-child {
+    border-bottom: none;
+}
+
+.connection-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.connection-relationship {
+    font-weight: 600;
+    color: var(--primary-700);
+    font-size: 14px;
+}
+
+.connection-target {
+    font-size: 14px;
+    color: var(--gray-800);
+}
+
+.connection-type {
+    font-size: 12px;
+    color: var(--gray-500);
+}
+
+.delete-connection-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    opacity: 0.6;
+}
+
+.delete-connection-btn:hover {
+    opacity: 1;
+    background: var(--red-100);
+}
+
+/* Connection Form */
+.connection-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.connection-form-grid .form-group {
+    margin-bottom: 0;
+}
+
+.connection-form-grid .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 4px;
+    display: block;
+}
+
+.connection-form-grid .form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    background: var(--white);
+    transition: border-color var(--transition-fast);
+}
+
+.connection-form-grid .form-select:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.connection-form-grid .form-select:disabled {
+    background: var(--gray-100);
+    color: var(--gray-500);
+    cursor: not-allowed;
+}
+
+.connection-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-200);
+}
+
+.add-connection-btn {
+    background: var(--primary-600);
+    color: var(--white);
+    border: none;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.add-connection-btn:hover:not(:disabled) {
+    background: var(--primary-700);
+    transform: translateY(-1px);
+}
+
+.add-connection-btn:disabled {
+    background: var(--gray-400);
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Knowledge Base Action Buttons */
+.kb-action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.kb-connections-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    opacity: 0.7;
+}
+
+.kb-connections-btn:hover {
+    opacity: 1;
+    background: var(--blue-100);
+    color: var(--blue-700);
+}
+
+/* Responsive design for connections modal */
+@media (max-width: 900px) {
+    .connections-modal {
+        width: calc(100vw - 40px);
+    }
+    
+    .connection-form-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 600px) {
+    .connections-content {
+        gap: 16px;
+    }
+    
+    .connection-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .delete-connection-btn {
+        align-self: flex-end;
+    }
+}
+
+/* Knowledge Base Popover Styles */
+.kb-popover {
+    position: fixed;
+    background: var(--white);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    max-width: 400px;
+    min-width: 300px;
+    max-height: 500px;
+    overflow-y: auto;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all var(--transition-normal);
+    pointer-events: none;
+}
+
+.kb-popover.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.kb-popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--gray-50);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.kb-popover-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gray-900);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kb-popover-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--gray-500);
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    margin-left: 12px;
+    flex-shrink: 0;
+}
+
+.kb-popover-close:hover {
+    background: var(--gray-200);
+    color: var(--gray-700);
+}
+
+.kb-popover-content {
+    padding: 16px 20px;
+}
+
+.kb-popover-field {
+    margin-bottom: 12px;
+}
+
+.kb-popover-field:last-child {
+    margin-bottom: 0;
+}
+
+.kb-popover-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin-bottom: 4px;
+}
+
+.kb-popover-value {
+    font-size: 14px;
+    color: var(--gray-900);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.kb-popover-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-200);
+}
+
+.kb-popover-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 12px;
+}
+
+.kb-popover-connections {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.kb-popover-connection {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 12px;
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--primary-500);
+}
+
+.kb-connection-relationship {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary-700);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.kb-connection-target {
+    font-size: 13px;
+    color: var(--gray-800);
+}
+
+.kb-popover-more {
+    font-size: 12px;
+    color: var(--gray-500);
+    font-style: italic;
+    text-align: center;
+    padding: 8px;
+}
+
+/* Entity name styling - inherits from duplicate-entity for consistent look */
+
+/* Responsive popover */
+@media (max-width: 600px) {
+    .kb-popover {
+        max-width: calc(100vw - 20px);
+        min-width: calc(100vw - 20px);
+        left: 10px !important;
+        right: 10px;
+    }
+    
+    .kb-popover-header {
+        padding: 12px 16px;
+    }
+    
+    .kb-popover-content {
+        padding: 12px 16px;
+    }
 }
 
 /* Compact required indicator */

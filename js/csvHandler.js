@@ -29,9 +29,7 @@ export function parseCSV(csvContent) {
         
         // Parse header
         const header = parseCSVLine(lines[0]);
-        console.log('📋 CSV Header parsed:', header);
         validateHeader(header);
-        console.log('✅ CSV Header validated successfully');
         
         // Parse data rows
         const data = [];
@@ -55,13 +53,11 @@ export function parseCSV(csvContent) {
                     rowData[col] = row[index] || '';
                 });
                 
-                console.log(`📊 Row ${i + 1} data:`, rowData);
                 
                 // Validate and process the row
                 const processedRow = processRow(rowData, i + 1);
                 if (processedRow) {
                     data.push(processedRow);
-                    console.log(`✅ Row ${i + 1} processed successfully`);
                 } else {
                     console.warn(`❌ Row ${i + 1} was rejected during processing`);
                     skippedRows++;
@@ -69,12 +65,6 @@ export function parseCSV(csvContent) {
             }
         }
         
-        console.log(`📊 CSV Processing Summary:
-            - Total lines: ${lines.length}
-            - Rows processed: ${totalRowsProcessed}
-            - Valid rows: ${data.length}
-            - Skipped rows: ${skippedRows}
-        `);
         
         if (data.length === 0) {
             throw new Error('No valid data rows found in CSV');
@@ -236,14 +226,17 @@ export function createCSVTable(csvData) {
     const columns = EXPECTED_COLUMNS;
     const data = csvData.data;
     const duplicates = csvData.duplicates || new Map();
+    const newEntities = csvData.newEntities || new Map();
     
-    // Count duplicates for info display
+    // Count duplicates and new entities for info display
     const duplicateCount = duplicates.size;
+    const newEntityCount = newEntities.size;
     
     let tableHTML = `
         <div class="table-info">
             <p><strong>${data.length}</strong> rows loaded</p>
             ${duplicateCount > 0 ? `<p class="duplicate-info">🔍 <strong>${duplicateCount}</strong> entities already exist in knowledge base</p>` : ''}
+            ${newEntityCount > 0 ? `<p class="new-entity-info">✨ <strong>${newEntityCount}</strong> new entities found - review to add to knowledge base</p>` : ''}
         </div>
         <div class="table-wrapper">
             <table class="csv-table">
@@ -278,7 +271,7 @@ export function createCSVTable(csvData) {
             const value = row[column] || '';
             let processedValue = value;
             
-            // Check if this cell contains a duplicate entity and wrap in span
+            // Check if this cell contains entities (duplicates or new) and wrap in span
             if (column === 'Actor' || column === 'Target' || column === 'Locations') {
                 if (column === 'Locations' && value) {
                     // Handle multiple locations
@@ -289,15 +282,24 @@ export function createCSVTable(csvData) {
                             const dupInfo = duplicates.get(trimmedLocation.toLowerCase());
                             const dupInfoJson = escapeHtml(JSON.stringify(dupInfo));
                             return `<span class="duplicate-entity" data-duplicate-info="${dupInfoJson}" title="Click to view knowledge base entry">${escapeHtml(trimmedLocation)}</span>`;
+                        } else if (newEntities.has(trimmedLocation.toLowerCase())) {
+                            const newEntityInfo = newEntities.get(trimmedLocation.toLowerCase());
+                            const entityInfoJson = escapeHtml(JSON.stringify(newEntityInfo));
+                            return `<span class="new-entity" data-entity-info="${entityInfoJson}" title="Click to review and approve">${escapeHtml(trimmedLocation)}</span>`;
                         }
                         return escapeHtml(trimmedLocation);
                     });
                     processedValue = processedLocations.join(', ');
                 } else if (value && duplicates.has(value.trim().toLowerCase())) {
-                    // Handle single entity (Actor or Target)
+                    // Handle single duplicate entity (Actor or Target)
                     const dupInfo = duplicates.get(value.trim().toLowerCase());
                     const dupInfoJson = escapeHtml(JSON.stringify(dupInfo));
                     processedValue = `<span class="duplicate-entity" data-duplicate-info="${dupInfoJson}" title="Click to view knowledge base entry">${escapeHtml(value)}</span>`;
+                } else if (value && newEntities.has(value.trim().toLowerCase())) {
+                    // Handle single new entity (Actor or Target)
+                    const newEntityInfo = newEntities.get(value.trim().toLowerCase());
+                    const entityInfoJson = escapeHtml(JSON.stringify(newEntityInfo));
+                    processedValue = `<span class="new-entity" data-entity-info="${entityInfoJson}" title="Click to review and approve">${escapeHtml(value)}</span>`;
                 } else {
                     processedValue = escapeHtml(value);
                 }
@@ -320,7 +322,7 @@ export function createCSVTable(csvData) {
     return tableHTML;
 }
 
-// Initialize duplicate entity click handlers after table is rendered
+// Initialize entity click handlers after table is rendered
 export function initializeDuplicateHandlers() {
     // Remove any existing popover
     const existingPopover = document.querySelector('.kb-popover');
@@ -331,6 +333,11 @@ export function initializeDuplicateHandlers() {
     // Add click handlers to duplicate entities
     document.querySelectorAll('.duplicate-entity').forEach(span => {
         span.addEventListener('click', handleDuplicateEntityClick);
+    });
+    
+    // Add click handlers to new entities
+    document.querySelectorAll('.new-entity').forEach(span => {
+        span.addEventListener('click', handleNewEntityClick);
     });
     
     // Close popover when clicking outside
@@ -464,6 +471,280 @@ function handleDocumentClick(event) {
             }
         }, 200);
     }
+}
+
+// Handle click on new entity
+function handleNewEntityClick(event) {
+    event.stopPropagation();
+    
+    const span = event.target;
+    const entityInfo = JSON.parse(span.getAttribute('data-entity-info'));
+    
+    
+    // Open the approval modal
+    openApprovalModal(entityInfo);
+}
+
+// Open approval modal for new entity
+function openApprovalModal(entityInfo) {
+    // Remove any existing modal
+    const existingModal = document.querySelector('.approval-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    const modal = createApprovalModal(entityInfo);
+    document.body.appendChild(modal);
+    
+    // Show the modal
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+    
+    // Prevent body scrolling
+    document.body.style.overflow = 'hidden';
+}
+
+// Create approval modal HTML
+function createApprovalModal(entityInfo) {
+    const modal = document.createElement('div');
+    modal.className = 'approval-modal modal-overlay';
+    
+    const entity = entityInfo.entity;
+    const originalName = entityInfo.originalName;
+    
+    let modalContent = '';
+    
+    if (entity) {
+        // Entity was found in Wikidata
+        modalContent = `
+            <div class="modal-container approval-modal-container">
+                <div class="modal-header">
+                    <h2>Review Entity</h2>
+                    <button type="button" class="close-modal-btn approval-close">&times;</button>
+                </div>
+                
+                <div class="modal-content">
+                    <div class="approval-entity-info">
+                        <div class="entity-type-badge ${entity.type}">${entity.type}</div>
+                        <h3 class="entity-name">${escapeHtml(entity.name)}</h3>
+                        <div class="original-name">Originally: "${escapeHtml(originalName)}"</div>
+                        
+                        ${entity.wikidata_id ? `<div class="wikidata-id">Wikidata ID: ${entity.wikidata_id}</div>` : ''}
+                        ${entity.description ? `<div class="entity-description">${escapeHtml(entity.description)}</div>` : ''}
+                    </div>
+                    
+                    <div class="entity-details">
+                        ${createEntityDetailsForModal(entity)}
+                    </div>
+                    
+                    <div class="approval-actions">
+                        <button type="button" class="approve-btn" data-action="approve">
+                            ✓ Approve & Add to Knowledge Base
+                        </button>
+                        <button type="button" class="reject-btn" data-action="reject">
+                            ✗ Reject
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        // Unknown entity - not found in Wikidata
+        modalContent = `
+            <div class="modal-container approval-modal-container">
+                <div class="modal-header">
+                    <h2>Unknown Entity</h2>
+                    <button type="button" class="close-modal-btn approval-close">&times;</button>
+                </div>
+                
+                <div class="modal-content">
+                    <div class="approval-entity-info">
+                        <div class="entity-type-badge unknown">Unknown</div>
+                        <h3 class="entity-name">${escapeHtml(originalName)}</h3>
+                        <div class="unknown-reason">Not found in Wikidata</div>
+                    </div>
+                    
+                    <div class="approval-actions">
+                        <button type="button" class="map-btn" data-action="map">
+                            🔗 Map to Wikidata ID
+                        </button>
+                        <button type="button" class="reject-btn" data-action="reject">
+                            ✗ Reject
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    modal.innerHTML = modalContent;
+    
+    // Add event listeners
+    setupApprovalModalEventListeners(modal, entityInfo);
+    
+    return modal;
+}
+
+// Create entity details for modal display
+function createEntityDetailsForModal(entity) {
+    let detailsHTML = '<div class="entity-details-grid">';
+    
+    if (entity.type === 'person') {
+        if (entity.occupation) detailsHTML += `<div class="detail-item"><label>Occupation:</label><span>${escapeHtml(entity.occupation)}</span></div>`;
+        if (entity.currentEmployer) detailsHTML += `<div class="detail-item"><label>Employer:</label><span>${escapeHtml(entity.currentEmployer)}</span></div>`;
+        if (entity.currentResidence) detailsHTML += `<div class="detail-item"><label>Residence:</label><span>${escapeHtml(entity.currentResidence)}</span></div>`;
+        if (entity.dateOfBirth) detailsHTML += `<div class="detail-item"><label>Birth Date:</label><span>${entity.dateOfBirth}</span></div>`;
+    } else if (entity.type === 'place') {
+        if (entity.country) detailsHTML += `<div class="detail-item"><label>Country:</label><span>${escapeHtml(entity.country)}</span></div>`;
+        if (entity.state) detailsHTML += `<div class="detail-item"><label>State/Region:</label><span>${escapeHtml(entity.state)}</span></div>`;
+        if (entity.population) detailsHTML += `<div class="detail-item"><label>Population:</label><span>${entity.population.toLocaleString()}</span></div>`;
+    } else if (entity.type === 'organization') {
+        if (entity.category) detailsHTML += `<div class="detail-item"><label>Category:</label><span>${escapeHtml(entity.category)}</span></div>`;
+        if (entity.industry) detailsHTML += `<div class="detail-item"><label>Industry:</label><span>${escapeHtml(entity.industry)}</span></div>`;
+        if (entity.location) detailsHTML += `<div class="detail-item"><label>Location:</label><span>${escapeHtml(entity.location)}</span></div>`;
+        if (entity.founded) detailsHTML += `<div class="detail-item"><label>Founded:</label><span>${entity.founded}</span></div>`;
+    }
+    
+    detailsHTML += '</div>';
+    return detailsHTML;
+}
+
+// Setup event listeners for approval modal
+function setupApprovalModalEventListeners(modal, entityInfo) {
+    // Close button
+    const closeBtn = modal.querySelector('.approval-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeApprovalModal);
+    }
+    
+    // Action buttons
+    const approveBtn = modal.querySelector('.approve-btn');
+    const rejectBtn = modal.querySelector('.reject-btn');
+    const mapBtn = modal.querySelector('.map-btn');
+    
+    if (approveBtn) {
+        approveBtn.addEventListener('click', () => handleApprovalAction('approve', entityInfo));
+    }
+    
+    if (rejectBtn) {
+        rejectBtn.addEventListener('click', () => handleApprovalAction('reject', entityInfo));
+    }
+    
+    if (mapBtn) {
+        mapBtn.addEventListener('click', () => handleApprovalAction('map', entityInfo));
+    }
+    
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeApprovalModal();
+        }
+    });
+    
+    // Close on Escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeApprovalModal();
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
+// Close approval modal
+function closeApprovalModal() {
+    const modal = document.querySelector('.approval-modal');
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = '';
+    }
+}
+
+// Handle approval actions
+async function handleApprovalAction(action, entityInfo) {
+    
+    try {
+        if (action === 'approve' && entityInfo.entity) {
+            // Show immediate feedback that approval is in progress
+            showEntityProcessing(entityInfo.originalName, 'Saving...');
+            
+            // Import required functions
+            const { saveEntityToFirebase } = await import('./firebaseOperations.js');
+            const { getFirebaseCollectionName } = await import('./collectionMapping.js');
+            
+            // Save to Firebase
+            const collectionName = getFirebaseCollectionName(entityInfo.entity.type + 's');
+            await saveEntityToFirebase(entityInfo.entity, collectionName);
+            
+            console.log(`✅ Successfully saved ${entityInfo.entity.name} to Firebase`);
+            
+            // Update the CSV table to show this entity as approved
+            updateEntityInCSVTable(entityInfo.originalName, 'approved');
+            
+        } else if (action === 'reject') {
+            
+            // Update the CSV table to show this entity as rejected
+            updateEntityInCSVTable(entityInfo.originalName, 'rejected');
+            
+        } else if (action === 'map') {
+            // Handle mapping to Wikidata - prompt for Wikidata ID
+            const wikidataId = prompt('Enter Wikidata ID (e.g., Q123456):');
+            if (wikidataId && /^Q\d+$/i.test(wikidataId.trim())) {
+                // TODO: Implement Wikidata mapping
+                alert('Wikidata mapping functionality will be implemented soon!');
+            } else if (wikidataId) {
+                alert('Please enter a valid Wikidata ID (e.g., Q123456)');
+                return; // Don't close modal
+            }
+        }
+        
+        // Close the modal
+        closeApprovalModal();
+        
+    } catch (error) {
+        console.error('Error handling approval action:', error);
+        alert(`Error: ${error.message}`);
+    }
+}
+
+// Show processing state for entity (immediate feedback)
+function showEntityProcessing(originalName, message) {
+    const entitySpans = document.querySelectorAll('.new-entity');
+    entitySpans.forEach(span => {
+        if (span.textContent.trim() === originalName) {
+            span.style.opacity = '0.7';
+            span.style.pointerEvents = 'none';
+            span.title = message;
+            
+            // Add a subtle pulsing animation
+            span.style.animation = 'pulse 1.5s ease-in-out infinite';
+        }
+    });
+}
+
+// Update entity styling in CSV table based on approval status
+function updateEntityInCSVTable(originalName, status) {
+    const entitySpans = document.querySelectorAll('.new-entity');
+    entitySpans.forEach(span => {
+        if (span.textContent.trim() === originalName) {
+            // Remove any inline styles to let CSS classes take effect
+            span.style.removeProperty('background');
+            span.style.removeProperty('border-color');
+            span.style.removeProperty('color');
+            span.style.removeProperty('opacity');
+            span.style.removeProperty('pointer-events');
+            span.style.removeProperty('animation');
+            
+            // Update class and title
+            span.className = `entity-${status}`;
+            span.title = status === 'approved' ? 'Successfully added to knowledge base ✓' : 'Rejected ✗';
+            
+            // Remove click handler for approved/rejected entities
+            span.style.cursor = 'default';
+            span.onclick = null;
+        }
+    });
 }
 
 // Handle file upload

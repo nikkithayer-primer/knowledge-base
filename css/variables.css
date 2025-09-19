@@ -73,7 +73,7 @@
     
     /* Layout */
     --container-max-width: none;
-    --content-max-width: 1200px;
+    --content-max-width: 100%;
     --input-height: 44px;
     --button-height: 44px;
     

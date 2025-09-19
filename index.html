@@ -9,19 +9,22 @@
 <body>
     <header class="header">
         <div class="header-content">
-            <h1>Knowledge Base Writer</h1>
-            <button type="button" id="createEntryBtn" class="create-entry-btn">+ Create Entry</button>
+            <div class="header-top">
+                <h1>Knowledge Base Writer</h1>
+                <button type="button" id="createEntryBtn" class="create-entry-btn">+ Create Entry</button>
+            </div>
+            <nav class="header-tabs">
+                <div class="section-tabs">
+                    <button type="button" id="csvTab" class="tab-button active">CSV Upload</button>
+                    <button type="button" id="knowledgeBaseTab" class="tab-button">Knowledge Base</button>
+                </div>
+            </nav>
         </div>
     </header>
 
     <main class="main-content">
         <div class="content-grid">
             <section class="form-section">
-                <div class="section-tabs">
-                    <button type="button" id="csvTab" class="tab-button active">CSV Upload</button>
-                    <button type="button" id="approvalTab" class="tab-button">Approval Queue</button>
-                    <button type="button" id="knowledgeBaseTab" class="tab-button">Knowledge Base</button>
-                </div>
                 
                 <div id="csvSection" class="tab-content active">
                     <h2>CSV Upload & Data</h2>
@@ -65,19 +68,6 @@
                     
                     <div id="csvEmptyState" style="display: block;">
                         <p class="no-data">No CSV data loaded. Upload a CSV file to view data here.</p>
-                    </div>
-                </div>
-                
-                <div id="approvalSection" class="tab-content">
-                    <h2>Entity Approval Queue</h2>
-                    <div id="approvalControls" class="approval-controls">
-                        <button type="button" id="approveAllBtn" class="approve-all-btn" disabled>✓ Approve All</button>
-                        <button type="button" id="rejectAllBtn" class="reject-all-btn" disabled>✗ Reject All</button>
-                        <span id="approvalStats" class="approval-stats">No entities to review</span>
-                    </div>
-                    <div id="approvalQueue" class="approval-queue"></div>
-                    <div id="approvalEmptyState" style="display: block;">
-                        <p class="no-data">No entities pending approval. Upload a CSV file to see extracted entities here.</p>
                     </div>
                 </div>
                 
@@ -163,6 +153,64 @@
                 </form>
                 
                 <div id="status" class="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connections Modal -->
+    <div id="connectionsModal" class="modal-overlay">
+        <div class="modal-container connections-modal">
+            <div class="modal-header">
+                <h2 id="connectionsModalTitle">Manage Connections</h2>
+                <button type="button" id="closeConnectionsModalBtn" class="close-modal-btn">&times;</button>
+            </div>
+            
+            <div class="modal-content">
+                <div class="connections-content">
+                    <!-- Current connections list -->
+                    <div class="current-connections">
+                        <h3>Current Connections</h3>
+                        <div id="currentConnectionsList" class="connections-list">
+                            <!-- Connections will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Add new connection form -->
+                    <div class="add-connection">
+                        <h3>Add New Connection</h3>
+                        <form id="addConnectionForm">
+                            <div class="connection-form-grid">
+                                <div class="form-group">
+                                    <label for="targetEntityType" class="form-label">Target Entity Type</label>
+                                    <select id="targetEntityType" class="form-select">
+                                        <option value="">Select type...</option>
+                                        <option value="people">Person</option>
+                                        <option value="places">Place</option>
+                                        <option value="organizations">Organization</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="targetEntity" class="form-label">Target Entity</label>
+                                    <select id="targetEntity" class="form-select" disabled>
+                                        <option value="">Select entity...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="relationshipType" class="form-label">Relationship</label>
+                                    <select id="relationshipType" class="form-select" disabled>
+                                        <option value="">Select relationship...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="connection-actions">
+                                <button type="submit" id="addConnectionBtn" class="add-connection-btn" disabled>Add Connection</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

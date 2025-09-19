@@ -1,39 +1,6 @@
 /* CSV Upload and Table Styles */
 
-/* Tab Navigation */
-.section-tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: var(--space-6);
-}
-
-.tab-button {
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    color: var(--gray-600);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-    min-height: auto;
-    margin: 0;
-}
-
-.tab-button:hover {
-    color: var(--gray-800);
-    background: var(--gray-50);
-    transform: none;
-    box-shadow: none;
-}
-
-.tab-button.active {
-    color: var(--accent-color);
-    background: transparent;
-}
+/* Tab styles now handled by fixed-tabs in components.css */
 
 /* CSV Data tab with data indicator */
 .tab-button[data-has-data="true"] {
@@ -213,6 +180,12 @@
     margin-top: var(--space-2) !important;
 }
 
+.new-entity-info {
+    color: #10b981 !important;
+    font-weight: var(--font-weight-semibold) !important;
+    margin-top: var(--space-2) !important;
+}
+
 .table-wrapper {
     overflow-x: auto;
     max-height: 70vh;
@@ -332,13 +305,39 @@
     transform: translateY(-1px);
 }
 
-.duplicate-entity::before {
-    content: '🔍';
+
+
+/* New entity span styling - for entities pending approval */
+.new-entity {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border: 2px solid #10b981;
+    border-radius: var(--radius-sm);
+    font-weight: var(--font-weight-semibold);
+    color: #065f46;
+    padding: 2px 6px;
+    margin: 0 2px;
+    position: relative;
+    cursor: pointer;
+    display: inline-block;
+    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.2);
+    transition: all var(--transition-fast);
+}
+
+.new-entity:hover {
+    background: linear-gradient(135deg, #a7f3d0 0%, #6ee7b7 100%);
+    border-color: #059669;
+    color: #064e3b;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+    transform: translateY(-1px);
+}
+
+.new-entity::before {
+    content: '✨';
     position: absolute;
     top: -8px;
     right: -6px;
     font-size: 10px;
-    background: var(--accent-color);
+    background: #10b981;
     color: white;
     border-radius: 50%;
     width: 16px;
@@ -352,8 +351,79 @@
     transition: opacity var(--transition-fast);
 }
 
-.duplicate-entity:hover::before {
+.new-entity:hover::before {
     opacity: 1;
+}
+
+/* Approved entity styling - distinct success state */
+.entity-approved {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border: 2px solid #16a34a;
+    border-radius: var(--radius-sm);
+    font-weight: var(--font-weight-bold);
+    color: #14532d;
+    padding: 2px 6px;
+    margin: 0 2px;
+    display: inline-block;
+    cursor: default;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+    animation: approveSuccess 0.6s ease-out;
+}
+
+.entity-approved::before {
+    content: '✓';
+    position: absolute;
+    top: -8px;
+    right: -6px;
+    font-size: 10px;
+    background: #16a34a;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    box-shadow: 0 1px 3px rgba(22, 163, 74, 0.4);
+}
+
+@keyframes approveSuccess {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(22, 163, 74, 0.4);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.7;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Rejected entity styling */
+.entity-rejected {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border: 2px solid #ef4444;
+    border-radius: var(--radius-sm);
+    font-weight: var(--font-weight-semibold);
+    color: #991b1b;
+    padding: 2px 6px;
+    margin: 0 2px;
+    display: inline-block;
+    cursor: default;
 }
 
 /* Knowledge Base Popover for duplicate entities */
@@ -489,16 +559,7 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .section-tabs {
-        flex-direction: column;
-        gap: 0;
-    }
-    
-    .tab-button {
-        border-bottom: none;
-        border-right: 2px solid transparent;
-        text-align: left;
-    }
+    /* Tab responsive styles now handled by fixed-tabs in components.css */
     
     .tab-button.active {
         border-bottom: none;
@@ -1376,6 +1437,199 @@
 
 .kb-th-description, .kb-td-description {
     max-width: 200px;
+}
+
+/* Approval Modal Styles */
+.approval-modal {
+    z-index: 2000; /* Higher than other modals */
+}
+
+.approval-modal-container {
+    max-width: 600px;
+    width: 90%;
+}
+
+.approval-entity-info {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.entity-type-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin-bottom: 12px;
+}
+
+.entity-type-badge.person {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.entity-type-badge.place {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.entity-type-badge.organization {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.entity-type-badge.unknown {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.approval-entity-info .entity-name {
+    font-size: 24px;
+    font-weight: var(--font-weight-bold);
+    color: var(--gray-900);
+    margin: 0 0 8px 0;
+}
+
+.original-name {
+    font-size: 14px;
+    color: var(--gray-600);
+    font-style: italic;
+    margin-bottom: 12px;
+}
+
+.wikidata-id {
+    font-size: 13px;
+    color: var(--accent-color);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: 8px;
+}
+
+.entity-description {
+    font-size: 14px;
+    color: var(--gray-700);
+    line-height: 1.5;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.unknown-reason {
+    font-size: 14px;
+    color: var(--gray-500);
+    font-style: italic;
+}
+
+.entity-details {
+    margin-bottom: 24px;
+}
+
+.entity-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.entity-details-grid .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.entity-details-grid .detail-item label {
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.entity-details-grid .detail-item span {
+    font-size: 14px;
+    color: var(--gray-900);
+    font-weight: var(--font-weight-medium);
+}
+
+.approval-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.approve-btn, .reject-btn, .map-btn {
+    padding: 12px 24px;
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-semibold);
+    font-size: 14px;
+    border: 2px solid;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    min-width: 140px;
+}
+
+.approve-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border-color: #10b981;
+}
+
+.approve-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    border-color: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.reject-btn {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border-color: #ef4444;
+}
+
+.reject-btn:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.map-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border-color: #3b82f6;
+}
+
+.map-btn:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Responsive approval modal */
+@media (max-width: 600px) {
+    .approval-modal-container {
+        width: 95%;
+        margin: 20px auto;
+    }
+    
+    .entity-details-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .approval-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .approve-btn, .reject-btn, .map-btn {
+        width: 100%;
+        max-width: 280px;
+    }
 }
 
 .kb-th-wikidata_id, .kb-td-wikidata_id {

@@ -53,8 +53,6 @@
 /* New field group layout */
 .field-group {
     margin-bottom: var(--space-6);
-    border: 1px solid var(--gray-200);
-    border-radius: var(--radius-md);
     background: var(--white);
     overflow: hidden;
 }

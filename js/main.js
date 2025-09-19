@@ -5,8 +5,8 @@ import { saveEntityToFirebase, loadEntitiesFromFirebase } from './firebaseOperat
 import { showStatus, createDataItem, setButtonLoading, clearDataDisplay, showDataDisplay } from './ui.js';
 import { handleCSVUpload, createCSVTable, initializeDuplicateHandlers } from './csvHandler.js';
 import { enrichCSVWithWikidata } from './wikidataIntegration.js';
-import { initializeApprovalQueue, renderApprovalQueue, handleApproveAll, handleRejectAll } from './approvalQueue.js';
-import { loadKnowledgeBase, initializeKnowledgeBaseListeners, getKnowledgeBaseData } from './knowledgeBase.js';
+// Approval queue functionality now integrated into CSV table
+import { loadKnowledgeBase, initializeKnowledgeBase, initializeKnowledgeBaseListeners, getKnowledgeBaseData } from './knowledgeBase.js';
 
 // DOM elements
 const form = document.getElementById('dataForm');
@@ -25,10 +25,8 @@ const manualTypeSelection = document.getElementById('manualTypeSelection');
 
 // Tab elements
 const csvTab = document.getElementById('csvTab');
-const approvalTab = document.getElementById('approvalTab');
 const knowledgeBaseTab = document.getElementById('knowledgeBaseTab');
 const csvSection = document.getElementById('csvSection');
-const approvalSection = document.getElementById('approvalSection');
 const knowledgeBaseSection = document.getElementById('knowledgeBaseSection');
 
 // Modal elements
@@ -43,16 +41,13 @@ const csvTableContainer = document.getElementById('csvTableContainer');
 const csvEmptyState = document.getElementById('csvEmptyState');
 const clearCsvBtn = document.getElementById('clearCsvBtn');
 
-// Approval queue elements
-const approveAllBtn = document.getElementById('approveAllBtn');
-const rejectAllBtn = document.getElementById('rejectAllBtn');
+// Approval queue functionality removed - now integrated into CSV table
 
 // Global state
 let currentCSVData = null;
 
 // Check if an entity already exists in the knowledge base
 function checkForDuplicateInKB(entityName, entityType, wikidataId = null) {
-    console.log(`🔍 Checking for duplicate: "${entityName}" (${entityType}) with Wikidata ID: ${wikidataId}`);
     
     const kbData = getKnowledgeBaseData();
     
@@ -66,7 +61,6 @@ function checkForDuplicateInKB(entityName, entityType, wikidataId = null) {
     const kbKey = entityTypeMapping[entityType] || entityType + 's';
     const entities = kbData[kbKey] || [];
     
-    console.log(`🔍 Checking against ${entities.length} existing ${kbKey}`);
     
     // Check for exact name match
     const exactMatch = entities.find(entity => 
@@ -74,7 +68,6 @@ function checkForDuplicateInKB(entityName, entityType, wikidataId = null) {
     );
     
     if (exactMatch) {
-        console.log(`✅ Found exact name match: ${exactMatch.name}`);
         return { type: 'exact', entity: exactMatch };
     }
     
@@ -86,7 +79,6 @@ function checkForDuplicateInKB(entityName, entityType, wikidataId = null) {
     );
     
     if (aliasMatch) {
-        console.log(`✅ Found alias match: ${aliasMatch.name} (alias: ${entityName})`);
         return { type: 'alias', entity: aliasMatch };
     }
     
@@ -97,12 +89,10 @@ function checkForDuplicateInKB(entityName, entityType, wikidataId = null) {
         );
         
         if (wikidataMatch) {
-            console.log(`✅ Found Wikidata ID match: ${wikidataMatch.name} (${wikidataId})`);
             return { type: 'wikidata', entity: wikidataMatch };
         }
     }
     
-    console.log(`❌ No duplicate found for: ${entityName}`);
     return null;
 }
 
@@ -133,7 +123,6 @@ function filterOutDuplicates(enrichedData) {
             };
             const singularType = pluralToSingular[entityType] || entityType.slice(0, -1);
             
-            console.log(`🔍 Processing entity: ${entityName} (${singularType}) with Wikidata ID: ${wikidataId}`);
             
             const duplicate = checkForDuplicateInKB(entityName, singularType, wikidataId);
             
@@ -145,33 +134,51 @@ function filterOutDuplicates(enrichedData) {
                     entityType: singularType,
                     originalName: entityName
                 });
-                console.log(`🔍 Duplicate found: ${entityName} (${duplicate.type} match) → matched to: ${duplicate.entity.name}`);
             } else {
                 // No duplicate, add to approval queue
                 filteredData[entityType].push(entity);
-                console.log(`✅ Adding to approval queue: ${entityName}`);
             }
         });
     });
     
-    console.log(`📋 Duplicate check complete: ${duplicates.length} duplicates found, ${filteredData.people.length + filteredData.places.length + filteredData.organizations.length} entities for approval`);
     
     return { filteredData, duplicates };
 }
 
-// Update CSV table to highlight duplicates
-function updateCSVTableWithDuplicates(csvData, duplicates) {
+// Update CSV table to highlight duplicates and new entities
+function updateCSVTableWithEntities(csvData, duplicates, newEntities) {
     // Create a map of entity names to duplicate info for quick lookup
     const duplicateMap = new Map();
     duplicates.forEach(dup => {
         duplicateMap.set(dup.originalName.toLowerCase(), dup);
     });
     
-    // Store duplicate info for CSV table rendering
-    csvData.duplicates = duplicateMap;
+    // Create a map of entity names to new entity info for quick lookup
+    const newEntityMap = new Map();
+    newEntities.forEach(entity => {
+        const originalName = getOriginalEntityName(entity);
+        newEntityMap.set(originalName.toLowerCase(), {
+            entity: entity.entity || entity,
+            originalName: originalName,
+            entityType: entity.entityType || entity.type
+        });
+    });
     
-    // Re-render the CSV table with duplicate highlighting
+    // Store entity info for CSV table rendering
+    csvData.duplicates = duplicateMap;
+    csvData.newEntities = newEntityMap;
+    
+    // Re-render the CSV table with entity highlighting
     displayCSVData(csvData);
+}
+
+// Get original name from entity (for backwards compatibility)
+function getOriginalEntityName(entity) {
+    if (entity.originalName) return entity.originalName;
+    if (entity.entity && entity.entity.aliases && entity.entity.aliases.length > 0) {
+        return entity.entity.aliases[0];
+    }
+    return entity.entity ? entity.entity.name : entity.name || 'Unknown';
 }
 
 // Event handlers - removed old entity type tab handling
@@ -210,7 +217,6 @@ async function handleWikidataDetection() {
         }
         
         const detectedEntityType = entityDetails.entityType;
-        console.log('🔍 Detected entity type:', detectedEntityType);
         
         // Update the form based on detected type
         if (detectedEntityType && ['person', 'place', 'organization'].includes(detectedEntityType)) {
@@ -396,8 +402,6 @@ function handleReset() {
 
 // Modal functions
 function openModal() {
-    console.log('🔧 Opening modal...');
-    console.log('🔧 Modal element:', manualEntryModal);
     if (manualEntryModal) {
         manualEntryModal.classList.add('show');
         document.body.style.overflow = 'hidden'; // Prevent background scrolling
@@ -407,7 +411,6 @@ function openModal() {
         hideEntityTypeIndicator();
         showManualTypeSelection();
         
-        console.log('✅ Modal opened successfully');
     } else {
         console.error('❌ Modal element not found!');
     }
@@ -422,71 +425,27 @@ function closeModal() {
 function switchToCSVTab() {
     // Update tab states
     csvTab.classList.add('active');
-    approvalTab.classList.remove('active');
     knowledgeBaseTab.classList.remove('active');
     
     // Update section visibility
     csvSection.classList.add('active');
-    approvalSection.classList.remove('active');
     knowledgeBaseSection.classList.remove('active');
 }
 
-function switchToApprovalTab() {
-    // Check if approval tab is disabled
-    if (approvalTab.classList.contains('disabled')) {
-        return; // Don't switch to disabled tab
-    }
-    
-    // Update tab states
-    approvalTab.classList.add('active');
-    csvTab.classList.remove('active');
-    knowledgeBaseTab.classList.remove('active');
-    
-    // Update section visibility
-    approvalSection.classList.add('active');
-    csvSection.classList.remove('active');
-    knowledgeBaseSection.classList.remove('active');
-}
 
 function switchToKnowledgeBaseTab() {
     // Update tab states
     knowledgeBaseTab.classList.add('active');
     csvTab.classList.remove('active');
-    approvalTab.classList.remove('active');
     
     // Update section visibility
     knowledgeBaseSection.classList.add('active');
     csvSection.classList.remove('active');
-    approvalSection.classList.remove('active');
     
     // Load knowledge base data when switching to this tab
     loadKnowledgeBase();
 }
 
-// Update approval tab state based on content availability
-function updateApprovalTabState(hasContent) {
-    if (hasContent) {
-        // Enable the approval tab
-        approvalTab.classList.remove('disabled');
-        approvalTab.style.opacity = '1';
-        approvalTab.style.cursor = 'pointer';
-        approvalTab.title = '';
-    } else {
-        // Disable the approval tab
-        approvalTab.classList.add('disabled');
-        approvalTab.style.opacity = '0.5';
-        approvalTab.style.cursor = 'not-allowed';
-        approvalTab.title = 'Upload a CSV file to populate the approval queue';
-        
-        // If currently on approval tab, switch to CSV tab
-        if (approvalTab.classList.contains('active')) {
-            switchToCSVTab();
-        }
-    }
-}
-
-// Make updateApprovalTabState available globally for approvalQueue.js
-window.updateApprovalTabState = updateApprovalTabState;
 
 // Make modal functions available globally for debugging
 window.openModal = openModal;
@@ -536,45 +495,41 @@ async function processCSVFile(file) {
             showStatus(`Successfully loaded ${result.totalRows} rows from ${file.name}`, 'success', csvStatus);
             
             // Load knowledge base first to check for duplicates
-            console.log('\n🔍 Loading knowledge base for duplicate checking...');
             await loadKnowledgeBase();
             
             // Start Wikidata enrichment process
-            console.log('\n🚀 Starting Wikidata enrichment for uploaded CSV...');
             showStatus(`Processing Wikidata enrichment for ${result.totalRows} rows...`, 'success', csvStatus);
             
             try {
                 const enrichedData = await enrichCSVWithWikidata(result);
                 
-                // Check for duplicates in knowledge base before adding to approval queue
+                // Check for duplicates in knowledge base 
                 const { filteredData, duplicates } = filterOutDuplicates(enrichedData);
                 
-                // Initialize approval queue with filtered data (no duplicates)
-                const approvalQueue = initializeApprovalQueue(filteredData);
-                renderApprovalQueue();
+                // Prepare new entities for inline approval in CSV table
+                const newEntitiesList = [
+                    ...filteredData.people.map(entity => ({ entity, entityType: 'person', originalName: getOriginalEntityName({ entity }) })),
+                    ...filteredData.places.map(entity => ({ entity, entityType: 'place', originalName: getOriginalEntityName({ entity }) })),
+                    ...filteredData.organizations.map(entity => ({ entity, entityType: 'organization', originalName: getOriginalEntityName({ entity }) })),
+                    ...enrichedData.unknown.map(entity => ({ entity: null, entityType: 'unknown', originalName: entity.originalName }))
+                ];
                 
-                // Update CSV table to show duplicates differently
-                if (duplicates.length > 0) {
-                    updateCSVTableWithDuplicates(result, duplicates);
-                }
+                // Update CSV table to show both duplicates and new entities inline
+                updateCSVTableWithEntities(result, duplicates, newEntitiesList);
                 
                 // Update status with enrichment results
                 const totalFound = enrichedData.people.length + enrichedData.places.length + enrichedData.organizations.length;
-                const newEntities = filteredData.people.length + filteredData.places.length + filteredData.organizations.length;
+                const newEntitiesCount = newEntitiesList.length;
                 const duplicateCount = duplicates.length;
                 
                 let statusMessage = `✅ CSV loaded with ${result.totalRows} rows. Found ${totalFound} entities.`;
-                if (duplicateCount > 0) {
-                    statusMessage += ` ${duplicateCount} duplicates found, ${newEntities} new entities for review.`;
+                if (duplicateCount > 0 || newEntitiesCount > 0) {
+                    statusMessage += ` ${duplicateCount} duplicates found, ${newEntitiesCount} new entities ready for review.`;
                 } else {
-                    statusMessage += ` ${newEntities} entities for review in Approval Queue.`;
+                    statusMessage += ` All entities processed.`;
                 }
                 showStatus(statusMessage, 'success', csvStatus);
                 
-                // Update approval tab state based on content
-                updateApprovalTabState(newEntities > 0);
-                
-                console.log(`🎉 Wikidata enrichment complete! ${totalFound} entities ready for approval.`);
                 
             } catch (enrichmentError) {
                 console.error('Wikidata enrichment error:', enrichmentError);
@@ -622,30 +577,20 @@ function clearCSVData() {
     // Reset file input
     csvFileInput.value = '';
     
-    // Disable approval tab since no data is available
-    updateApprovalTabState(false);
-    
-    console.log('📄 CSV data cleared');
 }
 
 // Initialize event listeners
 function initializeEventListeners() {
-    console.log('🔧 Initializing event listeners...');
-    console.log('🔧 Create Entry Button:', createEntryBtn);
-    console.log('🔧 Close Modal Button:', closeModalBtn);
-    console.log('🔧 Manual Entry Modal:', manualEntryModal);
     
     // Modal listeners
     if (createEntryBtn) {
         createEntryBtn.addEventListener('click', openModal);
-        console.log('✅ Create Entry button listener added');
     } else {
         console.error('❌ Create Entry button not found!');
     }
     
     if (closeModalBtn) {
         closeModalBtn.addEventListener('click', closeModal);
-        console.log('✅ Close Modal button listener added');
     } else {
         console.error('❌ Close Modal button not found!');
     }
@@ -657,7 +602,6 @@ function initializeEventListeners() {
                 closeModal();
             }
         });
-        console.log('✅ Modal overlay click listener added');
     }
     
     // Close modal with Escape key
@@ -666,7 +610,6 @@ function initializeEventListeners() {
             closeModal();
         }
     });
-    console.log('✅ Escape key listener added');
     
     // Manual form listeners
     if (wikidataIdDetection) {
@@ -690,7 +633,6 @@ function initializeEventListeners() {
     
     // Tab listeners
     csvTab.addEventListener('click', switchToCSVTab);
-    approvalTab.addEventListener('click', switchToApprovalTab);
     knowledgeBaseTab.addEventListener('click', switchToKnowledgeBaseTab);
     
     // CSV upload listeners
@@ -705,9 +647,7 @@ function initializeEventListeners() {
         clearCsvBtn.addEventListener('click', clearCSVData);
     }
     
-    // Approval queue listeners
-    approveAllBtn.addEventListener('click', handleApproveAll);
-    rejectAllBtn.addEventListener('click', handleRejectAll);
+    // Approval queue functionality removed - now handled inline in CSV table
     
     // Initialize knowledge base listeners
     initializeKnowledgeBaseListeners();
@@ -715,17 +655,10 @@ function initializeEventListeners() {
 
 // Initialize the application
 function initializeApp() {
-    console.log('Knowledge Base Firebase Writer loaded');
     initializeEventListeners();
     
-    // Initialize with default entity type (people) for the modal
-    handleEntityTypeChange('people');
-    
-    // Start with CSV tab active instead of manual tab
+    // Start with CSV tab active
     switchToCSVTab();
-    
-    // Initialize approval tab as disabled
-    updateApprovalTabState(false);
     
     showStatus('Ready to upload CSV files and create knowledge base entries!', 'success', document.getElementById('csvStatus'));
 }

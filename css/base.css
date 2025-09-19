@@ -31,16 +31,65 @@ body {
 .header {
     background: var(--white);
     border-bottom: 1px solid var(--gray-200);
-    padding: var(--space-6) 0;
     position: sticky;
     top: 0;
     z-index: 100;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .header-content {
     max-width: var(--content-max-width);
     margin: 0 auto;
     padding: 0 var(--space-6);
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-6) 0;
+}
+
+.header-tabs .section-tabs {
+    display: flex;
+    justify-content: left;
+    gap: 0;
+    padding: 0;
+}
+
+.header-tabs .tab-button {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.header-tabs .tab-button:hover {
+    color: var(--primary-600);
+    background: var(--gray-50);
+}
+
+.header-tabs .tab-button.active {
+    color: var(--primary-600);
+    border-bottom-color: var(--primary-600);
+    font-weight: var(--font-weight-semibold);
+}
+
+.header-tabs .tab-button.disabled {
+    color: var(--gray-400);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.header-tabs .tab-button.disabled:hover {
+    color: var(--gray-400);
+    background: transparent;
 }
 
 h1 {
@@ -55,7 +104,7 @@ h1 {
 .main-content {
     max-width: var(--content-max-width);
     margin: 0 auto;
-    padding: var(--section-gap) var(--space-6);
+    padding: var(--section-gap) var(--space-4);
 }
 
 .content-grid {
@@ -133,11 +182,35 @@ label {
         padding: 0 var(--space-4);
     }
     
+    .header-top {
+        padding: var(--space-4) 0;
+    }
+    
+    .header-tabs .tab-button {
+        padding: var(--space-2) var(--space-4);
+        font-size: var(--font-size-sm);
+    }
+    
     .main-content {
         padding: var(--space-6) var(--space-4);
     }
     
     h1 {
         font-size: var(--font-size-xl);
+    }
+}
+
+@media (max-width: 480px) {
+    .header-top {
+        padding: var(--space-3) 0;
+    }
+    
+    .header-tabs .tab-button {
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--font-size-xs);
+    }
+    
+    h1 {
+        font-size: var(--font-size-lg);
     }
 }

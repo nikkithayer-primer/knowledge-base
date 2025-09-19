@@ -37,7 +37,7 @@ export const entityFields = {
         { name: 'description', type: 'textarea', required: true, placeholder: 'Brief description of the place', group: 'basic' },
         
         // Classification
-        { name: 'category', type: 'select', options: ['city', 'university', 'building', 'region', 'country', 'state'], group: 'classification' },
+        { name: 'category', type: 'select', options: ['city', 'university', 'building', 'region', 'country', 'state', 'island'], group: 'classification' },
         
         // Geographic Information
         { name: 'country', type: 'text', placeholder: 'United States', group: 'geographic' },

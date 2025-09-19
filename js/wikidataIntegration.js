@@ -161,7 +161,6 @@ function processWikidataResults(bindings, originalName) {
         }
     });
     
-    console.log('🔍 All instanceOf values found:', instanceOfValues);
     
     // Determine entity type from all instance values
     const entityType = determineEntityTypeFromMultiple(instanceOfValues);
@@ -177,10 +176,6 @@ function processWikidataResult(binding, originalName, entityType = null, allInst
         entityType = determineEntityType(instanceOfValue);
     }
     
-    console.log('🔍 Processing Wikidata result:');
-    console.log('🔍 Original name:', originalName);
-    console.log('🔍 All instance types:', allInstanceOf.length > 0 ? allInstanceOf : [binding.instanceOfLabel?.value]);
-    console.log('🔍 Determined entity type:', entityType);
     
     const result = {
         originalName,
@@ -251,13 +246,6 @@ function processWikidataResult(binding, originalName, entityType = null, allInst
         }
     }
     
-    console.log('🔍 Final result structure:', {
-        entityType: result.entityType,
-        hasPerson: !!result.person,
-        hasPlace: !!result.place,
-        hasOrganization: !!result.organization,
-        keys: Object.keys(result)
-    });
     
     return result;
 }
@@ -266,7 +254,6 @@ function processWikidataResult(binding, originalName, entityType = null, allInst
 function determineEntityTypeFromMultiple(instanceOfValues) {
     if (!instanceOfValues || instanceOfValues.length === 0) return 'unknown';
     
-    console.log('🔍 Determining entity type from multiple values:', instanceOfValues);
     
     // Combine all instanceOf values into a single string for analysis
     const combinedInstances = instanceOfValues.join(' ').toLowerCase();
@@ -283,7 +270,6 @@ function determineEntityTypeFromMultiple(instanceOfValues) {
         combinedInstances.includes('president') ||
         combinedInstances.includes('prime minister') ||
         combinedInstances.includes('spokesperson')) {
-        console.log('🔍 Detected as PERSON based on:', instanceOfValues);
         return 'person';
     }
     
@@ -300,8 +286,8 @@ function determineEntityTypeFromMultiple(instanceOfValues) {
         combinedInstances.includes('location') ||
         combinedInstances.includes('building') ||
         combinedInstances.includes('university') ||
-        combinedInstances.includes('office')) {
-        console.log('🔍 Detected as PLACE based on:', instanceOfValues);
+        combinedInstances.includes('office') ||
+        combinedInstances.includes('island')) {
         return 'place';
     }
     
@@ -329,11 +315,9 @@ function determineEntityTypeFromMultiple(instanceOfValues) {
         combinedInstances.includes('athletic club') ||
         combinedInstances.includes('club') ||
         combinedInstances.includes('team')) {
-        console.log('🔍 Detected as ORGANIZATION based on:', instanceOfValues);
         return 'organization';
     }
     
-    console.log('🔍 Could not determine type from:', instanceOfValues);
     return 'unknown';
 }
 
@@ -367,10 +351,8 @@ function parseCoordinates(coordinateString) {
 
 // Process all entities from CSV and enrich with Wikidata
 export async function enrichCSVWithWikidata(csvData) {
-    console.log('🔍 Starting Wikidata enrichment process...');
     
     const entities = extractEntitiesFromCSV(csvData);
-    console.log(`📊 Extracted ${entities.length} unique entities from CSV:`, entities);
     
     const enrichedEntities = {
         people: [],
@@ -384,7 +366,6 @@ export async function enrichCSVWithWikidata(csvData) {
     const batchSize = 5;
     for (let i = 0; i < entities.length; i += batchSize) {
         const batch = entities.slice(i, i + batchSize);
-        console.log(`🔄 Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(entities.length/batchSize)}: ${batch.join(', ')}`);
         
         const batchPromises = batch.map(entity => searchWikidataEntity(entity));
         const batchResults = await Promise.all(batchPromises);
@@ -397,11 +378,9 @@ export async function enrichCSVWithWikidata(csvData) {
                     originalName: entityName,
                     reason: result?.error || 'Not found in Wikidata'
                 });
-                console.log(`❌ Not found: ${entityName}`);
                 return;
             }
             
-            console.log(`✅ Found: ${entityName} → ${result.name} (${result.entityType})`);
             
             if (result.entityType === 'person' && result.person) {
                 enrichedEntities.people.push(result.person);
@@ -427,34 +406,7 @@ export async function enrichCSVWithWikidata(csvData) {
     }
     
     // Log summary
-    console.log('\n📋 WIKIDATA ENRICHMENT SUMMARY:');
-    console.log(`👥 People found: ${enrichedEntities.people.length}`);
-    console.log(`📍 Places found: ${enrichedEntities.places.length}`);
-    console.log(`🏢 Organizations found: ${enrichedEntities.organizations.length}`);
-    console.log(`❓ Unknown entities: ${enrichedEntities.unknown.length}`);
-    console.log(`❌ Not found: ${enrichedEntities.notFound.length}`);
     
-    // Log detailed results for Firebase-ready entities
-    if (enrichedEntities.people.length > 0) {
-        console.log('\n👥 PEOPLE (Firebase-ready format):');
-        enrichedEntities.people.forEach(person => {
-            console.log(`  • ${person.name}:`, person);
-        });
-    }
-    
-    if (enrichedEntities.places.length > 0) {
-        console.log('\n📍 PLACES (Firebase-ready format):');
-        enrichedEntities.places.forEach(place => {
-            console.log(`  • ${place.name}:`, place);
-        });
-    }
-    
-    if (enrichedEntities.organizations.length > 0) {
-        console.log('\n🏢 ORGANIZATIONS (Firebase-ready format):');
-        enrichedEntities.organizations.forEach(org => {
-            console.log(`  • ${org.name}:`, org);
-        });
-    }
     
     return enrichedEntities;
 }
@@ -466,7 +418,6 @@ export async function enrichEntityWithWikidata(entity) {
             throw new Error('No Wikidata ID provided');
         }
         
-        console.log(`🔍 Enriching entity with Wikidata ID: ${entity.wikidata_id}`);
         
         // Get detailed information from Wikidata
         const wikidataResult = await getWikidataEntityDetails(entity.wikidata_id, entity.originalName);

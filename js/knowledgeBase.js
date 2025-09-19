@@ -2,6 +2,7 @@
 import { loadEntitiesFromFirebase, deleteEntityFromFirebase, deleteMultipleEntitiesFromFirebase } from './firebaseOperations.js';
 import { escapeHtml } from './dataProcessor.js';
 import { getFirebaseCollectionName } from './collectionMapping.js';
+import { getAvailableRelationships, addConnection, getEntityConnections, deleteConnection, loadConnectionsFromFirebase } from './connections.js';
 
 // Global knowledge base state
 let knowledgeBaseData = {
@@ -44,16 +45,18 @@ export async function loadKnowledgeBase() {
             organizations: organizationsCollection
         });
         
-        const [people, places, organizations] = await Promise.all([
+        const [people, places, organizations, connections] = await Promise.all([
             loadEntitiesFromFirebase(peopleCollection, 100),
             loadEntitiesFromFirebase(placesCollection, 100),
-            loadEntitiesFromFirebase(organizationsCollection, 100)
+            loadEntitiesFromFirebase(organizationsCollection, 100),
+            loadConnectionsFromFirebase()
         ]);
         
         console.log('📊 Knowledge Base loaded:', {
             people: people.length,
             places: places.length, 
             organizations: organizations.length,
+            connections: connections.length,
             peopleData: people.map(p => ({ id: p.id, name: p.name })),
             placesData: places.map(p => ({ id: p.id, name: p.name })),
             organizationsData: organizations.map(o => ({ id: o.id, name: o.name }))
@@ -115,32 +118,56 @@ function createEntityTable(entities, entityType) {
                 <thead>
                     <tr>
                         ${columns.map(col => `<th class="kb-th-${col.key}">${col.label}</th>`).join('')}
-                        <th class="kb-th-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
     entities.forEach((entity, index) => {
-        tableHTML += `<tr class="${index % 2 === 0 ? 'even' : 'odd'}" data-entity-id="${entity.id}">`;
+        tableHTML += `<tr class="${index % 2 === 0 ? 'even' : 'odd'}">`;
         
         columns.forEach(col => {
-            const value = getEntityValue(entity, col.key);
-            tableHTML += `<td class="kb-td-${col.key}">${value}</td>`;
+            if (col.key === 'actions') {
+                // Actions column with connection management
+                tableHTML += `
+                    <td class="kb-td-actions">
+                        <div class="kb-action-buttons">
+                            <button type="button" class="kb-connections-btn" 
+                                    data-entity-type="${entityType}" 
+                                    data-entity-id="${entity.id}" 
+                                    data-entity-name="${escapeHtml(entity.name || 'Unnamed')}" 
+                                    title="Manage connections">
+                                🔗
+                            </button>
+                            <button type="button" class="kb-delete-btn-table" 
+                                    data-entity-type="${entityType}" 
+                                    data-entity-id="${entity.id}" 
+                                    data-entity-name="${escapeHtml(entity.name || 'Unnamed')}" 
+                                    title="Delete entity">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                `;
+            } else if (col.key === 'name') {
+                // Name column with clickable styling and popover trigger
+                const value = getEntityValue(entity, col.key);
+                tableHTML += `
+                    <td class="kb-td-${col.key}">
+                        <span class="kb-entity-name duplicate-entity" 
+                              data-entity-id="${entity.id}" 
+                              data-entity-type="${entityType}"
+                              data-entity-data="${escapeHtml(JSON.stringify(entity))}"
+                              title="Click to view details">
+                            ${value}
+                        </span>
+                    </td>
+                `;
+            } else {
+                const value = getEntityValue(entity, col.key);
+                tableHTML += `<td class="kb-td-${col.key}">${value}</td>`;
+            }
         });
-        
-        // Actions column
-        tableHTML += `
-            <td class="kb-td-actions">
-                <button type="button" class="kb-delete-btn-table" 
-                        data-entity-type="${entityType}" 
-                        data-entity-id="${entity.id}" 
-                        data-entity-name="${escapeHtml(entity.name || 'Unnamed')}" 
-                        title="Delete entity">
-                    🗑️
-                </button>
-            </td>
-        `;
         
         tableHTML += '</tr>';
     });
@@ -151,7 +178,7 @@ function createEntityTable(entities, entityType) {
         </div>
     `;
     
-    // Add event listeners for delete buttons
+    // Add event listeners for action buttons
     setTimeout(() => {
         const deleteButtons = document.querySelectorAll('.kb-delete-btn-table');
         deleteButtons.forEach(btn => {
@@ -163,48 +190,43 @@ function createEntityTable(entities, entityType) {
                 handleDeleteEntity(entityType, entityId, entityName);
             });
         });
+        
+        const connectionButtons = document.querySelectorAll('.kb-connections-btn');
+        connectionButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const entityType = btn.dataset.entityType;
+                const entityId = btn.dataset.entityId;
+                const entityName = btn.dataset.entityName;
+                openConnectionsModal(entityType, entityId, entityName);
+            });
+        });
+        
+        // Add click handlers for entity names to show popover
+        const entityNames = document.querySelectorAll('.kb-entity-name');
+        entityNames.forEach(nameSpan => {
+            nameSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                const entityId = nameSpan.dataset.entityId;
+                const entityType = nameSpan.dataset.entityType;
+                const entityData = JSON.parse(nameSpan.dataset.entityData);
+                
+                showEntityPopover(e, entityData, entityType);
+            });
+        });
     }, 0);
     
     return tableHTML;
 }
 
-// Get table columns for each entity type
+// Get table columns for simplified knowledge base view
 function getTableColumns(entityType) {
-    const commonColumns = [
+    return [
         { key: 'name', label: 'Name' },
-        { key: 'description', label: 'Description' },
-        { key: 'wikidata_id', label: 'Wikidata ID' }
+        { key: 'wikidata_id', label: 'Wikidata ID' },
+        { key: 'actions', label: 'Actions' }
     ];
-    
-    if (entityType === 'people') {
-        return [
-            ...commonColumns,
-            { key: 'occupation', label: 'Occupation' },
-            { key: 'currentEmployer', label: 'Current Employer' },
-            { key: 'currentResidence', label: 'Location' },
-            { key: 'dateOfBirth', label: 'Date of Birth' }
-        ];
-    } else if (entityType === 'places') {
-        return [
-            ...commonColumns,
-            { key: 'category', label: 'Category' },
-            { key: 'country', label: 'Country' },
-            { key: 'population', label: 'Population' },
-            { key: 'coordinates', label: 'Coordinates' }
-        ];
-    } else if (entityType === 'organizations') {
-        return [
-            ...commonColumns,
-            { key: 'category', label: 'Category' },
-            { key: 'industry', label: 'Industry' },
-            { key: 'sport', label: 'Sport' },
-            { key: 'league', label: 'League' },
-            { key: 'founded', label: 'Founded' },
-            { key: 'location', label: 'Location' }
-        ];
-    }
-    
-    return commonColumns;
 }
 
 // Get formatted value for entity field
@@ -784,3 +806,535 @@ function showErrorDialog(title, message) {
     
     setTimeout(() => okBtn.focus(), 100);
 }
+
+// Connections modal management
+let currentConnectionEntity = null;
+
+export function openConnectionsModal(entityType, entityId, entityName) {
+    currentConnectionEntity = { entityType, entityId, entityName };
+    
+    const modal = document.getElementById('connectionsModal');
+    const title = document.getElementById('connectionsModalTitle');
+    
+    if (modal && title) {
+        title.textContent = `Manage Connections - ${entityName}`;
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        
+        // Load current connections
+        loadCurrentConnections(entityId, entityType);
+        
+        console.log('🔗 Opened connections modal for:', entityName);
+    }
+}
+
+function closeConnectionsModal() {
+    const modal = document.getElementById('connectionsModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+        resetConnectionForm();
+    }
+}
+
+function loadCurrentConnections(entityId, entityType) {
+    const connectionsList = document.getElementById('currentConnectionsList');
+    if (!connectionsList) return;
+    
+    const connections = getEntityConnections(entityId, entityType);
+    
+    if (connections.length === 0) {
+        connectionsList.innerHTML = '<div class="no-connections">No connections found</div>';
+        return;
+    }
+    
+    let connectionsHTML = '';
+    connections.forEach(connection => {
+        const isOutgoing = connection.fromEntityId === entityId;
+        const targetId = isOutgoing ? connection.toEntityId : connection.fromEntityId;
+        const targetType = isOutgoing ? connection.toEntityType : connection.fromEntityType;
+        const relationshipLabel = getRelationshipLabel(connection.relationshipType, connection.fromEntityType, connection.toEntityType);
+        
+        // Get target entity name (placeholder for now)
+        const targetEntity = findEntityById(targetId, targetType);
+        const targetName = targetEntity?.name || 'Unknown Entity';
+        
+        connectionsHTML += `
+            <div class="connection-item" data-connection-id="${connection.id}">
+                <div class="connection-info">
+                    <span class="connection-relationship">${relationshipLabel}</span>
+                    <span class="connection-target">${targetName}</span>
+                    <span class="connection-type">(${targetType})</span>
+                </div>
+                <button type="button" class="delete-connection-btn" data-connection-id="${connection.id}" title="Delete connection">
+                    🗑️
+                </button>
+            </div>
+        `;
+    });
+    
+    connectionsList.innerHTML = connectionsHTML;
+    
+    // Add delete event listeners
+    connectionsList.querySelectorAll('.delete-connection-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const connectionId = e.target.dataset.connectionId;
+            try {
+                await deleteConnection(connectionId);
+                loadCurrentConnections(entityId, entityType); // Refresh list
+                console.log('✅ Connection deleted');
+            } catch (error) {
+                console.error('❌ Error deleting connection:', error);
+            }
+        });
+    });
+}
+
+// Track if listeners have been set up to avoid duplicates
+let connectionFormListenersSetup = false;
+
+function setupConnectionFormListeners() {
+    // Only setup listeners once
+    if (connectionFormListenersSetup) {
+        console.log('🔧 Connection form listeners already set up, skipping...');
+        return;
+    }
+    
+    console.log('🔧 Setting up connection form listeners');
+    
+    const targetEntityTypeSelect = document.getElementById('targetEntityType');
+    const targetEntitySelect = document.getElementById('targetEntity');
+    const relationshipTypeSelect = document.getElementById('relationshipType');
+    const addConnectionForm = document.getElementById('addConnectionForm');
+    
+    console.log('🔧 Form elements found:', {
+        targetEntityTypeSelect: !!targetEntityTypeSelect,
+        targetEntitySelect: !!targetEntitySelect,
+        relationshipTypeSelect: !!relationshipTypeSelect,
+        addConnectionForm: !!addConnectionForm
+    });
+    
+    if (targetEntityTypeSelect) {
+        targetEntityTypeSelect.addEventListener('change', (e) => {
+            console.log('🔧 Target entity type changed:', e.target.value);
+            const targetType = e.target.value;
+            
+            populateTargetEntities(targetType);
+            populateRelationshipTypes(targetType);
+            
+            const targetEntityEl = document.getElementById('targetEntity');
+            const relationshipTypeEl = document.getElementById('relationshipType');
+            
+            if (targetEntityEl) {
+                targetEntityEl.disabled = !targetType;
+                console.log('🔧 Target entity disabled state:', targetEntityEl.disabled);
+            }
+            if (relationshipTypeEl) {
+                relationshipTypeEl.disabled = !targetType;
+                console.log('🔧 Relationship type disabled state:', relationshipTypeEl.disabled);
+            }
+            
+            updateAddButtonState();
+        });
+        
+        console.log('✅ Target entity type listener added');
+    }
+    
+    if (targetEntitySelect) {
+        targetEntitySelect.addEventListener('change', () => {
+            console.log('🔧 Target entity changed:', targetEntitySelect.value);
+            updateAddButtonState();
+        });
+        console.log('✅ Target entity listener added');
+    }
+    
+    if (relationshipTypeSelect) {
+        relationshipTypeSelect.addEventListener('change', () => {
+            console.log('🔧 Relationship type changed:', relationshipTypeSelect.value);
+            updateAddButtonState();
+        });
+        console.log('✅ Relationship type listener added');
+    }
+    
+    if (addConnectionForm) {
+        addConnectionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('🔧 Form submitted');
+            await handleAddConnection();
+        });
+        console.log('✅ Form submit listener added');
+    }
+    
+    // Mark as setup
+    connectionFormListenersSetup = true;
+}
+
+function populateTargetEntities(targetType) {
+    console.log('🔧 Populating target entities for type:', targetType);
+    const targetEntitySelect = document.getElementById('targetEntity');
+    if (!targetEntitySelect || !targetType) {
+        console.log('❌ Missing targetEntitySelect or targetType');
+        return;
+    }
+    
+    const entities = knowledgeBaseData[targetType] || [];
+    const currentEntityId = currentConnectionEntity?.entityId;
+    
+    console.log('🔧 Available entities:', entities.length, 'Current entity ID:', currentEntityId);
+    
+    targetEntitySelect.innerHTML = '<option value="">Select entity...</option>';
+    
+    let addedCount = 0;
+    entities.forEach(entity => {
+        // Don't show the current entity as a target
+        if (entity.id !== currentEntityId) {
+            const option = document.createElement('option');
+            option.value = entity.id;
+            option.textContent = entity.name || 'Unnamed Entity';
+            targetEntitySelect.appendChild(option);
+            addedCount++;
+        }
+    });
+    
+    console.log('🔧 Added', addedCount, 'target entities to dropdown');
+}
+
+function populateRelationshipTypes(targetType) {
+    console.log('🔧 Populating relationships for target type:', targetType);
+    const relationshipTypeSelect = document.getElementById('relationshipType');
+    if (!relationshipTypeSelect || !targetType || !currentConnectionEntity) {
+        console.log('❌ Missing relationshipTypeSelect, targetType, or currentConnectionEntity');
+        return;
+    }
+    
+    const relationships = getAvailableRelationships(currentConnectionEntity.entityType, targetType);
+    console.log('🔧 Available relationships:', relationships.length);
+    
+    relationshipTypeSelect.innerHTML = '<option value="">Select relationship...</option>';
+    
+    relationships.forEach(relationship => {
+        const option = document.createElement('option');
+        option.value = relationship.type;
+        option.textContent = relationship.label;
+        relationshipTypeSelect.appendChild(option);
+        console.log('🔧 Added relationship:', relationship.label);
+    });
+}
+
+function updateAddButtonState() {
+    const targetEntityTypeSelect = document.getElementById('targetEntityType');
+    const targetEntitySelect = document.getElementById('targetEntity');
+    const relationshipTypeSelect = document.getElementById('relationshipType');
+    const addConnectionBtn = document.getElementById('addConnectionBtn');
+    
+    if (addConnectionBtn) {
+        const isValid = targetEntityTypeSelect?.value && 
+                       targetEntitySelect?.value && 
+                       relationshipTypeSelect?.value;
+        
+        addConnectionBtn.disabled = !isValid;
+    }
+}
+
+async function handleAddConnection() {
+    const targetEntityType = document.getElementById('targetEntityType')?.value;
+    const targetEntityId = document.getElementById('targetEntity')?.value;
+    const relationshipType = document.getElementById('relationshipType')?.value;
+    
+    if (!targetEntityType || !targetEntityId || !relationshipType || !currentConnectionEntity) {
+        console.error('❌ Missing required connection data');
+        return;
+    }
+    
+    try {
+        await addConnection(
+            currentConnectionEntity.entityId,
+            currentConnectionEntity.entityType,
+            targetEntityId,
+            targetEntityType,
+            relationshipType
+        );
+        
+        // Refresh connections list
+        loadCurrentConnections(currentConnectionEntity.entityId, currentConnectionEntity.entityType);
+        
+        // Reset form
+        resetConnectionForm();
+        
+        console.log('✅ Connection added successfully');
+        
+    } catch (error) {
+        console.error('❌ Error adding connection:', error);
+    }
+}
+
+function resetConnectionForm() {
+    const form = document.getElementById('addConnectionForm');
+    if (form) {
+        form.reset();
+        
+        // Reset select states
+        const targetEntity = document.getElementById('targetEntity');
+        const relationshipType = document.getElementById('relationshipType');
+        const addConnectionBtn = document.getElementById('addConnectionBtn');
+        
+        if (targetEntity) targetEntity.disabled = true;
+        if (relationshipType) relationshipType.disabled = true;
+        if (addConnectionBtn) addConnectionBtn.disabled = true;
+    }
+}
+
+// Helper function to find entity by ID
+function findEntityById(entityId, entityType) {
+    const entities = knowledgeBaseData[entityType] || [];
+    return entities.find(entity => entity.id === entityId);
+}
+
+// Helper function to get relationship label
+function getRelationshipLabel(relationshipType, fromEntityType, toEntityType) {
+    const relationships = getAvailableRelationships(fromEntityType, toEntityType);
+    const relationship = relationships.find(r => r.type === relationshipType);
+    return relationship?.label || relationshipType;
+}
+
+// Initialize connections modal event listeners
+function initializeConnectionsModal() {
+    const closeBtn = document.getElementById('closeConnectionsModalBtn');
+    const modal = document.getElementById('connectionsModal');
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeConnectionsModal);
+    }
+    
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeConnectionsModal();
+            }
+        });
+    }
+    
+    // Close with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && modal.classList.contains('show')) {
+            closeConnectionsModal();
+        }
+    });
+    
+    // Setup form event listeners once during initialization
+    setupConnectionFormListeners();
+}
+
+// Initialize knowledge base functionality
+export async function initializeKnowledgeBase() {
+    try {
+        // Load knowledge base data
+        await loadKnowledgeBase();
+        
+        // Initialize event listeners
+        initializeKnowledgeBaseListeners();
+        
+        console.log('✅ Knowledge base initialized successfully');
+        
+    } catch (error) {
+        console.error('❌ Error initializing knowledge base:', error);
+    }
+}
+
+// Entity popover functionality
+function showEntityPopover(event, entityData, entityType) {
+    // Remove any existing popover
+    hideEntityPopover();
+    
+    const popover = createEntityPopover(entityData, entityType);
+    document.body.appendChild(popover);
+    
+    // Position the popover near the click point
+    positionPopover(popover, event);
+    
+    // Show the popover
+    setTimeout(() => {
+        popover.classList.add('show');
+    }, 10);
+    
+    console.log('📋 Showing entity popover for:', entityData.name);
+}
+
+function hideEntityPopover() {
+    const existingPopover = document.querySelector('.kb-popover');
+    if (existingPopover) {
+        existingPopover.remove();
+    }
+}
+
+function createEntityPopover(entity, entityType) {
+    const popover = document.createElement('div');
+    popover.className = 'kb-popover';
+    
+    let popoverHTML = `
+        <div class="kb-popover-header">
+            <h3 class="kb-popover-title">${escapeHtml(entity.name || 'Unnamed Entity')}</h3>
+            <button type="button" class="kb-popover-close" title="Close">&times;</button>
+        </div>
+        <div class="kb-popover-content">
+    `;
+    
+    // Add all entity fields
+    const fields = getEntityFieldsForDisplay(entity, entityType);
+    
+    fields.forEach(field => {
+        if (field.value && field.value !== '' && field.value !== null && field.value !== undefined) {
+            popoverHTML += `
+                <div class="kb-popover-field">
+                    <div class="kb-popover-label">${field.label}</div>
+                    <div class="kb-popover-value">${field.value}</div>
+                </div>
+            `;
+        }
+    });
+    
+    // Add connections if any exist
+    const connections = getEntityConnections(entity.id, entityType);
+    if (connections && connections.length > 0) {
+        popoverHTML += `
+            <div class="kb-popover-section">
+                <div class="kb-popover-section-title">Connections</div>
+                <div class="kb-popover-connections">
+        `;
+        
+        connections.slice(0, 5).forEach(connection => {
+            const isOutgoing = connection.fromEntityId === entity.id;
+            const targetId = isOutgoing ? connection.toEntityId : connection.fromEntityId;
+            const targetType = isOutgoing ? connection.toEntityType : connection.fromEntityType;
+            const relationshipLabel = getRelationshipLabel(connection.relationshipType, connection.fromEntityType, connection.toEntityType);
+            
+            const targetEntity = findEntityById(targetId, targetType);
+            const targetName = targetEntity?.name || 'Unknown Entity';
+            
+            popoverHTML += `
+                <div class="kb-popover-connection">
+                    <span class="kb-connection-relationship">${relationshipLabel}</span>
+                    <span class="kb-connection-target">${escapeHtml(targetName)}</span>
+                </div>
+            `;
+        });
+        
+        if (connections.length > 5) {
+            popoverHTML += `<div class="kb-popover-more">+${connections.length - 5} more connections</div>`;
+        }
+        
+        popoverHTML += `
+                </div>
+            </div>
+        `;
+    }
+    
+    popoverHTML += `
+        </div>
+    `;
+    
+    popover.innerHTML = popoverHTML;
+    
+    // Add close button event listener
+    const closeBtn = popover.querySelector('.kb-popover-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', hideEntityPopover);
+    }
+    
+    // Close on click outside
+    setTimeout(() => {
+        document.addEventListener('click', handlePopoverOutsideClick);
+    }, 100);
+    
+    return popover;
+}
+
+function getEntityFieldsForDisplay(entity, entityType) {
+    const fields = [];
+    
+    // Common fields for all entity types
+    if (entity.wikidata_id) {
+        fields.push({ label: 'Wikidata ID', value: entity.wikidata_id });
+    }
+    
+    if (entity.description) {
+        fields.push({ label: 'Description', value: escapeHtml(entity.description) });
+    }
+    
+    if (entity.aliases && entity.aliases.length > 0) {
+        fields.push({ label: 'Aliases', value: entity.aliases.join(', ') });
+    }
+    
+    // Entity-specific fields
+    if (entityType === 'people') {
+        if (entity.occupation) fields.push({ label: 'Occupation', value: escapeHtml(entity.occupation) });
+        if (entity.currentEmployer) fields.push({ label: 'Current Employer', value: escapeHtml(entity.currentEmployer) });
+        if (entity.currentResidence) fields.push({ label: 'Current Residence', value: escapeHtml(entity.currentResidence) });
+        if (entity.dateOfBirth) fields.push({ label: 'Date of Birth', value: entity.dateOfBirth });
+        if (entity.gender) fields.push({ label: 'Gender', value: entity.gender });
+        if (entity.educatedAt && entity.educatedAt.length > 0) fields.push({ label: 'Education', value: entity.educatedAt.join(', ') });
+        if (entity.expertise && entity.expertise.length > 0) fields.push({ label: 'Expertise', value: entity.expertise.join(', ') });
+        if (entity.previousEmployers && entity.previousEmployers.length > 0) fields.push({ label: 'Previous Employers', value: entity.previousEmployers.join(', ') });
+    } else if (entityType === 'places') {
+        if (entity.category) fields.push({ label: 'Category', value: escapeHtml(entity.category) });
+        if (entity.country) fields.push({ label: 'Country', value: escapeHtml(entity.country) });
+        if (entity.state) fields.push({ label: 'State/Region', value: escapeHtml(entity.state) });
+        if (entity.population) fields.push({ label: 'Population', value: entity.population.toLocaleString() });
+        if (entity.founded) fields.push({ label: 'Founded', value: entity.founded.toString() });
+        if (entity.coordinates) {
+            fields.push({ 
+                label: 'Coordinates', 
+                value: `${entity.coordinates.lat.toFixed(4)}, ${entity.coordinates.lng.toFixed(4)}` 
+            });
+        }
+    } else if (entityType === 'organizations') {
+        if (entity.category) fields.push({ label: 'Category', value: escapeHtml(entity.category) });
+        if (entity.industry) fields.push({ label: 'Industry', value: escapeHtml(entity.industry) });
+        if (entity.sport) fields.push({ label: 'Sport', value: escapeHtml(entity.sport) });
+        if (entity.league) fields.push({ label: 'League', value: escapeHtml(entity.league) });
+        if (entity.stadium) fields.push({ label: 'Stadium', value: escapeHtml(entity.stadium) });
+        if (entity.coach) fields.push({ label: 'Coach', value: escapeHtml(entity.coach) });
+        if (entity.conference) fields.push({ label: 'Conference', value: escapeHtml(entity.conference) });
+        if (entity.division) fields.push({ label: 'Division', value: escapeHtml(entity.division) });
+        if (entity.founded) fields.push({ label: 'Founded', value: entity.founded.toString() });
+        if (entity.location) fields.push({ label: 'Location', value: escapeHtml(entity.location) });
+        if (entity.employees) fields.push({ label: 'Employees', value: entity.employees.toLocaleString() });
+    }
+    
+    return fields;
+}
+
+function positionPopover(popover, event) {
+    const rect = event.target.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    
+    let left = rect.left + (rect.width / 2) - (popoverRect.width / 2);
+    let top = rect.bottom + 10;
+    
+    // Adjust if popover would go off screen
+    if (left < 10) {
+        left = 10;
+    } else if (left + popoverRect.width > window.innerWidth - 10) {
+        left = window.innerWidth - popoverRect.width - 10;
+    }
+    
+    if (top + popoverRect.height > window.innerHeight - 10) {
+        top = rect.top - popoverRect.height - 10;
+    }
+    
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+}
+
+function handlePopoverOutsideClick(event) {
+    if (!event.target.closest('.kb-popover') && !event.target.closest('.kb-entity-name')) {
+        hideEntityPopover();
+        document.removeEventListener('click', handlePopoverOutsideClick);
+    }
+}
+
+// Initialize knowledge base and connections when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    initializeKnowledgeBase();
+    initializeConnectionsModal();
+});

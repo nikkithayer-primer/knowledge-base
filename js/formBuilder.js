@@ -368,7 +368,6 @@ async function handleWikidataAutofill(event) {
         // Import the Wikidata integration function
         const { getWikidataEntityDetails } = await import('./wikidataIntegration.js');
         
-        console.log(`🔍 Fetching Wikidata details for ${wikidataId}...`);
         
         // Fetch entity details from Wikidata
         const details = await getWikidataEntityDetails(wikidataId, wikidataId);
@@ -376,9 +375,6 @@ async function handleWikidataAutofill(event) {
         if (details && details.found) {
             const entityData = details; // Use the returned entity object
             
-            console.log('📊 Wikidata entity data:', entityData);
-            console.log('📊 Entity type:', entityData.entityType);
-            console.log('📊 Available data keys:', Object.keys(entityData));
             
             // Auto-fill form fields based on the data
             autofillFormFields(entityData, wikidataId);
@@ -401,23 +397,15 @@ async function handleWikidataAutofill(event) {
 
 // Auto-fill form fields with Wikidata entity data
 function autofillFormFields(entityData, wikidataId) {
-    console.log('🔧 Starting autofill with data:', entityData);
-    console.log('🔧 Entity type:', entityData.entityType);
-    console.log('🔧 Has person data:', !!entityData.person);
-    console.log('🔧 Has place data:', !!entityData.place);
-    console.log('🔧 Has organization data:', !!entityData.organization);
     
     // Get the specific entity data based on entity type
     let specificEntityData = null;
     if (entityData.person) {
         specificEntityData = entityData.person;
-        console.log('🔧 Using person data:', specificEntityData);
     } else if (entityData.place) {
         specificEntityData = entityData.place;
-        console.log('🔧 Using place data:', specificEntityData);
     } else if (entityData.organization) {
         specificEntityData = entityData.organization;
-        console.log('🔧 Using organization data:', specificEntityData);
     }
     
     if (!specificEntityData) {
@@ -432,7 +420,6 @@ function autofillFormFields(entityData, wikidataId) {
             wikidata_id: entityData.wikidataId
         };
         
-        console.log('🔧 Using fallback data:', specificEntityData);
     }
     
     // Map entity fields to form fields
