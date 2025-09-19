@@ -131,6 +131,18 @@ a:hover {
     background: transparent;
 }
 
+.header-tabs .explorer-link {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.header-tabs .explorer-link:hover {
+    color: var(--primary-600);
+    background: var(--gray-50);
+}
+
 /* Main Content */
 .main-content {
     max-width: var(--content-max-width);

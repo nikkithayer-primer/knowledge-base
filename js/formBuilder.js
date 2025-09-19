@@ -24,14 +24,12 @@ export function generateDynamicFields(entityType, dynamicFields) {
         const fieldDiv = document.createElement('div');
         fieldDiv.className = getCompactFieldClassName(wikidataField);
         
-        const label = document.createElement('label');
-        label.className = 'form-label';
-        label.textContent = formatFieldName(wikidataField.name);
-        label.setAttribute('for', wikidataField.name);
-        
         const input = createCompactFieldInput(wikidataField);
+        // Set placeholder from formatted field name
+        if (input.tagName.toLowerCase() === 'input') {
+            input.placeholder = formatFieldName(wikidataField.name);
+        }
         
-        fieldDiv.appendChild(label);
         fieldDiv.appendChild(input);
         
         const helpText = document.createElement('div');
@@ -58,22 +56,22 @@ export function generateDynamicFields(entityType, dynamicFields) {
             fieldDiv.classList.add('sports-field', 'hidden');
         }
         
-        const label = document.createElement('label');
-        label.className = 'form-label';
-        label.textContent = formatFieldName(field.name);
-        
-        // Set the 'for' attribute based on field type
-        if (field.type !== 'array') {
-            label.setAttribute('for', field.name);
-        }
-        
-        if (field.required) {
-            label.classList.add('required');
-        }
-        
         const input = createCompactFieldInput(field);
         
-        fieldDiv.appendChild(label);
+        // Set placeholder from formatted field name, include required indicator
+        const placeholderText = formatFieldName(field.name) + (field.required ? ' *' : '');
+        if (input.tagName.toLowerCase() === 'input') {
+            input.placeholder = placeholderText;
+        } else if (input.tagName.toLowerCase() === 'select') {
+            // For select elements, update the first option to be the placeholder
+            const firstOption = input.querySelector('option[value=""]');
+            if (firstOption) {
+                firstOption.textContent = placeholderText;
+            }
+        } else if (input.tagName.toLowerCase() === 'textarea') {
+            input.placeholder = placeholderText;
+        }
+        
         fieldDiv.appendChild(input);
         
         // Add event listener for category changes to toggle sports fields

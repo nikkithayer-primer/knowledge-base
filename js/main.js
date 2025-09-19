@@ -3,7 +3,7 @@ import { generateDynamicFields } from './formBuilder.js';
 import { processFormData, validateData } from './dataProcessor.js';
 import { saveEntityToFirebase, loadEntitiesFromFirebase } from './firebaseOperations.js';
 import { showStatus, createDataItem, setButtonLoading, clearDataDisplay, showDataDisplay } from './ui.js';
-import { handleCSVUpload, createCSVTable, initializeDuplicateHandlers, saveCSVRowsAsEvents } from './csvHandler.js';
+import { handleCSVUpload, createCSVTable, initializeDuplicateHandlers, saveCSVRowsAsEvents, clearSessionEntities } from './csvHandler.js';
 import { enrichCSVWithWikidata } from './wikidataIntegration.js';
 // Approval queue functionality now integrated into CSV table
 import { loadKnowledgeBase, initializeKnowledgeBase, initializeKnowledgeBaseListeners, getKnowledgeBaseData } from './knowledgeBase.js';
@@ -459,6 +459,9 @@ async function processCSVFile(file) {
     try {
         csvStatus.style.display = 'none';
         
+        // Clear session entities from previous uploads
+        clearSessionEntities();
+        
         const result = await handleCSVUpload(file, csvStatus);
         
         if (result.success) {
@@ -534,6 +537,9 @@ function displayCSVData(csvData) {
     // Initialize duplicate entity click handlers
     initializeDuplicateHandlers();
     
+    // Add button to start 3-step approval process
+    addApprovalProcessButton(csvData);
+    
     // Hide empty state - data is now shown in the same CSV tab
     csvEmptyState.style.display = 'none';
     
@@ -546,6 +552,50 @@ function displayCSVData(csvData) {
     const csvDataDisplay = document.getElementById('csvDataDisplay');
     if (csvDataDisplay) {
         csvDataDisplay.style.display = 'block';
+    }
+}
+
+// Add button to start the 3-step approval process
+function addApprovalProcessButton(csvData) {
+    if (!csvTableContainer) return;
+    
+    // Check if button already exists
+    if (csvTableContainer.querySelector('.start-approval-btn')) return;
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'csv-actions';
+    buttonContainer.style.marginTop = 'var(--space-4)';
+    
+    buttonContainer.innerHTML = `
+        <button type="button" class="action-btn primary start-approval-btn">
+            🚀 Start 3-Step Approval Process
+        </button>
+        <p class="help-text">Review entities, approve events, and analyze connections in a guided workflow</p>
+    `;
+    
+    csvTableContainer.appendChild(buttonContainer);
+    
+    // Add event listener
+    const startBtn = buttonContainer.querySelector('.start-approval-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            startApprovalProcess(csvData);
+        });
+    }
+}
+
+// Start the 3-step approval process
+async function startApprovalProcess(csvData) {
+    try {
+        // Import the approval process module
+        const { initializeApprovalProcess } = await import('./approvalProcess.js');
+        
+        // Initialize the approval process
+        initializeApprovalProcess(csvData);
+        
+    } catch (error) {
+        console.error('Error starting approval process:', error);
+        alert('Error starting approval process: ' + error.message);
     }
 }
 
@@ -625,6 +675,12 @@ function initializeEventListeners() {
         connectionForm.addEventListener('submit', handleConnectionSubmit);
     }
     
+    // Create Connection button
+    const createConnectionBtn = document.getElementById('createConnectionBtn');
+    if (createConnectionBtn) {
+        createConnectionBtn.addEventListener('click', openConnectionModal);
+    }
+    
     // Connection modal listeners
     if (connectionModal) {
         connectionModal.addEventListener('click', (e) => {
@@ -663,10 +719,36 @@ function initializeApp() {
 // Removed old batch handleSaveAsEvents function - now using individual row actions
 
 // Open connection modal
-function openConnectionModal() {
+async function openConnectionModal() {
     if (connectionModal) {
+        // Refresh knowledge base data before opening modal
+        await loadKnowledgeBase();
+        
         connectionModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        
+        // Reset form to ensure clean state
+        resetConnectionForm();
+    }
+}
+
+// Reset connection form
+function resetConnectionForm() {
+    const form = document.getElementById('connectionForm');
+    if (form) {
+        form.reset();
+        
+        // Reset dropdowns to placeholder state
+        const dropdowns = ['fromEntityType', 'toEntityType', 'fromEntity', 'toEntity', 'relationshipType'];
+        dropdowns.forEach(id => {
+            const dropdown = document.getElementById(id);
+            if (dropdown) {
+                dropdown.selectedIndex = 0;
+                if (id === 'fromEntity' || id === 'toEntity' || id === 'relationshipType') {
+                    dropdown.disabled = true;
+                }
+            }
+        });
     }
 }
 
@@ -676,24 +758,11 @@ function closeConnectionModal() {
         connectionModal.style.display = 'none';
         document.body.style.overflow = '';
         
-        // Reset form
-        if (connectionForm) {
-            connectionForm.reset();
-            resetConnectionFormState();
-        }
+        // Reset form using the unified reset function
+        resetConnectionForm();
     }
 }
 
-// Reset connection form state
-function resetConnectionFormState() {
-    const fromEntity = document.getElementById('fromEntity');
-    const toEntity = document.getElementById('toEntity');
-    const relationshipType = document.getElementById('relationshipType');
-    
-    if (fromEntity) fromEntity.disabled = true;
-    if (toEntity) toEntity.disabled = true;
-    if (relationshipType) relationshipType.disabled = true;
-}
 
 // Setup connection form dynamic listeners
 function setupConnectionFormListeners() {
@@ -704,29 +773,31 @@ function setupConnectionFormListeners() {
     const relationshipType = document.getElementById('relationshipType');
     
     if (fromEntityType) {
-        fromEntityType.addEventListener('change', () => {
-            populateEntityDropdown('fromEntity', fromEntityType.value);
+        fromEntityType.addEventListener('change', async () => {
+            await populateEntityDropdown('fromEntity', fromEntityType.value);
             updateRelationshipOptions();
         });
     }
     
     if (toEntityType) {
-        toEntityType.addEventListener('change', () => {
-            populateEntityDropdown('toEntity', toEntityType.value);
+        toEntityType.addEventListener('change', async () => {
+            await populateEntityDropdown('toEntity', toEntityType.value);
             updateRelationshipOptions();
         });
     }
 }
 
 // Populate entity dropdown based on type
-function populateEntityDropdown(dropdownId, entityType) {
+async function populateEntityDropdown(dropdownId, entityType) {
     const dropdown = document.getElementById(dropdownId);
     if (!dropdown || !entityType) return;
     
+    // Refresh knowledge base data to get latest entities
+    await loadKnowledgeBase();
     const kbData = getKnowledgeBaseData();
     const entities = kbData[entityType] || [];
     
-    dropdown.innerHTML = '<option value="">Select entity...</option>';
+    dropdown.innerHTML = '<option value="" disabled>Entity</option>';
     
     entities.forEach(entity => {
         const option = document.createElement('option');
@@ -736,6 +807,10 @@ function populateEntityDropdown(dropdownId, entityType) {
     });
     
     dropdown.disabled = entities.length === 0;
+    
+    if (entities.length === 0) {
+        dropdown.innerHTML = '<option value="" disabled>No entities available</option>';
+    }
 }
 
 // Update relationship options based on selected entity types
@@ -776,8 +851,27 @@ async function handleConnectionSubmit(e) {
     const source = document.getElementById('connectionSource')?.value || 'Manual Entry';
     const confidence = document.getElementById('connectionConfidence')?.value || 'medium';
     
-    if (!fromEntityType || !fromEntityId || !toEntityType || !toEntityId || !relationshipTypeValue) {
-        showStatus('Please fill in all required fields', 'error', csvStatus);
+    // Enhanced validation
+    const validationErrors = [];
+    
+    if (!fromEntityType || fromEntityType === '') {
+        validationErrors.push('From Entity Type is required');
+    }
+    if (!fromEntityId || fromEntityId === '') {
+        validationErrors.push('From Entity is required');
+    }
+    if (!toEntityType || toEntityType === '') {
+        validationErrors.push('To Entity Type is required');
+    }
+    if (!toEntityId || toEntityId === '') {
+        validationErrors.push('To Entity is required');
+    }
+    if (!relationshipTypeValue || relationshipTypeValue === '') {
+        validationErrors.push('Relationship Type is required');
+    }
+    
+    if (validationErrors.length > 0) {
+        showStatus(`Validation Error: ${validationErrors.join(', ')}`, 'error', csvStatus);
         return;
     }
     

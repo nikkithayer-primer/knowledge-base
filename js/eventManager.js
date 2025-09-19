@@ -172,8 +172,11 @@ export async function loadConnectionsFromFirebase(limitCount = 100) {
 }
 
 // Get connections for a specific entity
-export function getEntityConnections(entityId, entityType) {
-    return connectionsData.filter(connection => 
+export function getEntityConnections(entityId, entityType, knowledgeBaseData = null) {
+    // Use provided knowledge base data if available, otherwise fall back to local data
+    const connectionsToSearch = knowledgeBaseData?.connections || connectionsData;
+    
+    return connectionsToSearch.filter(connection => 
         (connection.fromEntityId === entityId && connection.fromEntityType === entityType) ||
         (connection.toEntityId === entityId && connection.toEntityType === entityType)
     );

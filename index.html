@@ -15,6 +15,7 @@
         <nav class="header-tabs">
             <button type="button" id="csvTab" class="tab-button active">CSV Upload</button>
             <button type="button" id="knowledgeBaseTab" class="tab-button">Knowledge Base</button>
+            <a href="explore.html" class="tab-button explorer-link">🔍 Explorer</a>
         </nav>
     </header>
 
@@ -58,6 +59,56 @@
                         <div id="csvTableContainer" class="csv-table-container"></div>
                     </div>
                     
+                    <!-- 2-Step Approval Process -->
+                    <div id="approvalProcess" style="display: none;">
+                        <!-- Step Progress Indicator -->
+                        <div class="approval-steps">
+                            <div class="step active" data-step="1">
+                                <div class="step-number">1</div>
+                                <div class="step-title">Approve Events</div>
+                            </div>
+                            <div class="step" data-step="2">
+                                <div class="step-number">2</div>
+                                <div class="step-title">Analyze Connections</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 1: Approve Events -->
+                        <div id="step1" class="approval-step active">
+                            <div class="step-header">
+                                <h3>Step 1: Approve Events</h3>
+                                <p>Review and approve events to be added to your knowledge base</p>
+                            </div>
+                            <div id="step1Content" class="step-content">
+                                <!-- Dynamic content will be inserted here -->
+                            </div>
+                            <div class="step-actions">
+                                <button type="button" id="proceedToStep2" class="action-btn primary" disabled>
+                                    Proceed to Connections →
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Step 2: Analyze Connections -->
+                        <div id="step2" class="approval-step">
+                            <div class="step-header">
+                                <h3>Step 2: Analyze Connections</h3>
+                                <p>Review and approve relationships between entities</p>
+                            </div>
+                            <div id="step2Content" class="step-content">
+                                <!-- Dynamic content will be inserted here -->
+                            </div>
+                            <div class="step-actions">
+                                <button type="button" id="backToStep1" class="action-btn secondary">
+                                    ← Back to Events
+                                </button>
+                                <button type="button" id="completeApproval" class="action-btn success">
+                                    ✓ Complete Approval Process
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div id="csvEmptyState" style="display: block;">
                         <p class="no-data">No CSV data loaded. Upload a CSV file to view data here.</p>
                     </div>
@@ -70,6 +121,7 @@
                             <label for="searchFilter" class="sr-only">Search entities</label>
                             <input type="text" id="searchFilter" class="kb-search" placeholder="Search entities...">
                             <button type="button" id="refreshKBBtn" class="refresh-btn">🔄 Refresh</button>
+                            <button type="button" id="createConnectionBtn" class="action-btn primary">🔗 Create Connection</button>
                         </div>
                         <div id="knowledgeBaseStats" class="kb-stats">Loading knowledge base...</div>
                     </div>
@@ -122,8 +174,7 @@
                     
                     <!-- Wikidata ID field - always shown first for auto-detection -->
                     <div class="form-group wikidata-detection-field">
-                        <label for="wikidataIdDetection" class="form-label">Wikidata ID (Optional)</label>
-                        <input type="text" id="wikidataIdDetection" name="wikidata_id" class="form-input" placeholder="Q123456 - Enter to auto-detect entity type">
+                        <input type="text" id="wikidataIdDetection" name="wikidata_id" class="form-input" placeholder="Wikidata ID (Optional) - Q123456 - Enter to auto-detect entity type">
                         <div class="help-text">Enter a Wikidata ID to automatically detect entity type and populate fields</div>
                     </div>
                     
@@ -133,7 +184,6 @@
                     
                     <!-- Manual entity type selection (shown when no Wikidata ID) -->
                     <div id="manualTypeSelection" class="manual-type-selection">
-                        <label class="form-label">Or select entity type manually:</label>
                         <div class="manual-type-buttons">
                             <button type="button" class="manual-type-btn" data-type="people">👤 Person</button>
                             <button type="button" class="manual-type-btn" data-type="places">📍 Place</button>
@@ -168,18 +218,16 @@
                     <div class="form-section">
                         <h3>From Entity</h3>
                         <div class="form-group">
-                            <label for="fromEntityType" class="form-label">Entity Type:</label>
                             <select id="fromEntityType" class="form-input" required>
-                                <option value="">Select type...</option>
+                                <option value="">Entity Type</option>
                                 <option value="people">Person</option>
                                 <option value="places">Place</option>
                                 <option value="organizations">Organization</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="fromEntity" class="form-label">Entity:</label>
                             <select id="fromEntity" class="form-input" required disabled>
-                                <option value="">Select entity...</option>
+                                <option value="">Entity</option>
                             </select>
                         </div>
                     </div>
@@ -187,9 +235,8 @@
                     <div class="form-section">
                         <h3>Relationship</h3>
                         <div class="form-group">
-                            <label for="relationshipType" class="form-label">Relationship Type:</label>
                             <select id="relationshipType" class="form-input" required disabled>
-                                <option value="">Select relationship...</option>
+                                <option value="">Relationship Type</option>
                             </select>
                         </div>
                     </div>
@@ -197,18 +244,16 @@
                     <div class="form-section">
                         <h3>To Entity</h3>
                         <div class="form-group">
-                            <label for="toEntityType" class="form-label">Entity Type:</label>
                             <select id="toEntityType" class="form-input" required>
-                                <option value="">Select type...</option>
+                                <option value="">Entity Type</option>
                                 <option value="people">Person</option>
                                 <option value="places">Place</option>
                                 <option value="organizations">Organization</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="toEntity" class="form-label">Entity:</label>
                             <select id="toEntity" class="form-input" required disabled>
-                                <option value="">Select entity...</option>
+                                <option value="">Entity</option>
                             </select>
                         </div>
                     </div>
@@ -216,13 +261,12 @@
                     <div class="form-section">
                         <h3>Metadata</h3>
                         <div class="form-group">
-                            <label for="connectionSource" class="form-label">Source:</label>
                             <input type="text" id="connectionSource" class="form-input" placeholder="Source of this connection">
                         </div>
                         <div class="form-group">
-                            <label for="connectionConfidence" class="form-label">Confidence:</label>
                             <select id="connectionConfidence" class="form-input">
-                                <option value="medium">Medium</option>
+                                <option value="" disabled>Confidence</option>
+                                <option value="medium" selected>Medium</option>
                                 <option value="high">High</option>
                                 <option value="low">Low</option>
                             </select>

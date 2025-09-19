@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Base Explorer</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/forms.css">
+    <link rel="stylesheet" href="css/buttons.css">
+    <link rel="stylesheet" href="css/tables.css">
+    <link rel="stylesheet" href="css/modals.css">
+    <link rel="stylesheet" href="css/main.css">
+    
+    <!-- D3.js for network visualization -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <style>
+        /* Explorer-specific styles */
+        .explorer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--space-4);
+        }
+        
+        .explorer-header {
+            text-align: center;
+            margin-bottom: var(--space-6);
+            padding: var(--space-6) 0;
+            background: linear-gradient(135deg, var(--primary-600), var(--accent-color));
+            color: var(--white);
+            border-radius: var(--radius-lg);
+        }
+        
+        .explorer-header h1 {
+            margin: 0 0 var(--space-2) 0;
+            font-size: var(--font-size-3xl);
+            font-weight: var(--font-weight-bold);
+        }
+        
+        .explorer-header p {
+            margin: 0;
+            font-size: var(--font-size-lg);
+            opacity: 0.9;
+        }
+        
+        .search-section {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-bottom: var(--space-6);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .search-container {
+            position: relative;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: var(--space-4);
+            font-size: var(--font-size-lg);
+            border: 2px solid var(--gray-300);
+            border-radius: var(--radius-lg);
+            transition: all var(--transition-fast);
+            background: var(--white);
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-600);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+        
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: var(--space-1);
+        }
+        
+        .search-dropdown.show {
+            display: block;
+        }
+        
+        .search-item {
+            padding: var(--space-3) var(--space-4);
+            cursor: pointer;
+            transition: background-color var(--transition-fast);
+            border-bottom: 1px solid var(--gray-100);
+        }
+        
+        .search-item:hover,
+        .search-item.highlighted {
+            background: var(--gray-50);
+        }
+        
+        .search-item:last-child {
+            border-bottom: none;
+        }
+        
+        .search-item-name {
+            font-weight: var(--font-weight-semibold);
+            color: var(--gray-900);
+            margin-bottom: var(--space-1);
+        }
+        
+        .search-item-meta {
+            font-size: var(--font-size-sm);
+            color: var(--gray-600);
+            display: flex;
+            gap: var(--space-3);
+        }
+        
+        .search-item-type {
+            padding: var(--space-1) var(--space-2);
+            background: var(--blue-100);
+            color: var(--blue-800);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+        }
+        
+        .profile-section {
+            display: none;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        
+        .profile-section.show {
+            display: block;
+        }
+        
+        .profile-header {
+            background: var(--gray-50);
+            padding: var(--space-6);
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .profile-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-3);
+        }
+        
+        .profile-name {
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--gray-900);
+            margin: 0;
+        }
+        
+        .profile-type {
+            padding: var(--space-2) var(--space-3);
+            background: var(--primary-100);
+            color: var(--primary-800);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+        }
+        
+        .profile-meta {
+            display: flex;
+            gap: var(--space-4);
+            font-size: var(--font-size-sm);
+            color: var(--gray-600);
+        }
+        
+        .profile-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-6);
+            padding: var(--space-6);
+        }
+        
+        @media (max-width: 1024px) {
+            .profile-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .profile-details {
+            background: var(--gray-50);
+            padding: var(--space-4);
+            border-radius: var(--radius-sm);
+        }
+        
+        .profile-details h3 {
+            margin: 0 0 var(--space-4) 0;
+            color: var(--gray-900);
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .profile-field {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: var(--space-2);
+            margin-bottom: var(--space-3);
+            padding-bottom: var(--space-3);
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .profile-field:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        
+        .profile-field-label {
+            font-weight: var(--font-weight-semibold);
+            color: var(--gray-700);
+            font-size: var(--font-size-sm);
+        }
+        
+        .profile-field-value {
+            color: var(--gray-900);
+            font-size: var(--font-size-sm);
+        }
+        
+        .network-section {
+            background: var(--white);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--gray-200);
+        }
+        
+        .network-header {
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+        
+        .network-header h3 {
+            margin: 0;
+            color: var(--gray-900);
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .network-controls {
+            display: flex;
+            gap: var(--space-2);
+            margin-top: var(--space-3);
+        }
+        
+        .network-controls button {
+            padding: var(--space-1) var(--space-3);
+            border: 1px solid var(--gray-300);
+            background: var(--white);
+            color: var(--gray-700);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .network-controls button:hover {
+            background: var(--gray-50);
+        }
+        
+        .network-controls button.active {
+            background: var(--primary-600);
+            color: var(--white);
+            border-color: var(--primary-600);
+        }
+        
+        .network-graph {
+            width: 100%;
+            height: 500px;
+            border: 1px solid var(--gray-200);
+            background: var(--white);
+        }
+        
+        .connections-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: var(--space-4);
+        }
+        
+        .connection-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            background: var(--gray-50);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-2);
+        }
+        
+        .connection-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .connection-entity {
+            padding: var(--space-1) var(--space-2);
+            background: var(--blue-100);
+            color: var(--blue-800);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+        }
+        
+        .connection-relationship {
+            flex: 1;
+            text-align: center;
+            font-style: italic;
+            color: var(--gray-600);
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: var(--space-6);
+            color: var(--gray-500);
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            color: var(--primary-600);
+            text-decoration: none;
+            font-weight: var(--font-weight-medium);
+            margin-bottom: var(--space-4);
+            transition: color var(--transition-fast);
+        }
+        
+        .back-link:hover {
+            color: var(--primary-700);
+        }
+        
+        /* D3 Network Graph Styles */
+        .node {
+            cursor: pointer;
+            stroke-width: 2px;
+        }
+        
+        .node.main {
+            stroke: var(--primary-600);
+            fill: var(--primary-100);
+        }
+        
+        .node.connected {
+            stroke: var(--gray-400);
+            fill: var(--gray-100);
+        }
+        
+        .node:hover {
+            stroke-width: 3px;
+        }
+        
+        .link {
+            stroke: var(--gray-400);
+            stroke-width: 2px;
+            fill: none;
+        }
+        
+        .link.main-connection {
+            stroke: var(--primary-600);
+            stroke-width: 3px;
+        }
+        
+        .node-label {
+            font-family: var(--font-family);
+            font-size: 12px;
+            fill: var(--gray-700);
+            text-anchor: middle;
+            pointer-events: none;
+        }
+        
+        .link-label {
+            font-family: var(--font-family);
+            font-size: 10px;
+            fill: var(--gray-600);
+            text-anchor: middle;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="explorer-container">
+        <!-- Header -->
+        <div class="explorer-header">
+            <h1>🔍 Knowledge Base Explorer</h1>
+            <p>Discover entities and explore their connections</p>
+        </div>
+        
+        <!-- Back to Main -->
+        <a href="index.html" class="back-link">
+            ← Back to Main Application
+        </a>
+        
+        <!-- Search Section -->
+        <div class="search-section">
+            <h2 style="text-align: center; margin: 0 0 var(--space-4) 0; color: var(--gray-900);">
+                Search Knowledge Base
+            </h2>
+            <div class="search-container">
+                <input type="text" 
+                       id="entitySearch" 
+                       class="search-input" 
+                       placeholder="Start typing to search for people, places, organizations, events...">
+                <div id="searchDropdown" class="search-dropdown"></div>
+            </div>
+        </div>
+        
+        <!-- Profile Section -->
+        <div id="profileSection" class="profile-section">
+            <div class="profile-header">
+                <div class="profile-title">
+                    <h2 id="profileName" class="profile-name"></h2>
+                    <span id="profileType" class="profile-type"></span>
+                </div>
+                <div class="profile-meta">
+                    <span id="profileConnections">0 connections</span>
+                    <span id="profileEvents">0 events</span>
+                    <span id="profileSource">Source: Knowledge Base</span>
+                </div>
+            </div>
+            
+            <div class="profile-content">
+                <!-- Entity Details -->
+                <div class="profile-details">
+                    <h3>Entity Details</h3>
+                    <div id="profileFields"></div>
+                </div>
+                
+                <!-- Network Visualization -->
+                <div class="network-section">
+                    <div class="network-header">
+                        <h3>Connection Network</h3>
+                        <div class="network-controls">
+                            <button id="resetZoom">Reset Zoom</button>
+                            <button id="centerGraph">Center Graph</button>
+                            <button id="toggleLabels" class="active">Show Labels</button>
+                        </div>
+                    </div>
+                    <svg id="networkGraph" class="network-graph"></svg>
+                </div>
+            </div>
+            
+            <!-- Connections List -->
+            <div class="network-header">
+                <h3>All Connections</h3>
+            </div>
+            <div id="connectionsList" class="connections-list"></div>
+        </div>
+        
+        <!-- No Results -->
+        <div id="noResults" class="no-results" style="display: none;">
+            <h3>No entity selected</h3>
+            <p>Use the search above to find and explore entities in your knowledge base.</p>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script type="module" src="js/explorer.js"></script>
+</body>
+</html>
+

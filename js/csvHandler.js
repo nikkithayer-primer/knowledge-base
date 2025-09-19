@@ -2,6 +2,15 @@
 import { showStatus } from './ui.js';
 import { processCSVRowAsEvent, saveEventToFirebase } from './eventManager.js';
 
+// Track entities added during current session for typeahead
+let sessionApprovedEntities = [];
+
+// Clear session entities (call when starting new CSV upload)
+export function clearSessionEntities() {
+    sessionApprovedEntities = [];
+    console.log('🔄 Cleared session entities for new upload');
+}
+
 // Expected CSV columns (support both singular and plural forms)
 const EXPECTED_COLUMNS = [
     'Actor',
@@ -205,9 +214,7 @@ function processRow(rowData, rowNumber) {
         
         if (processedRow.Datetimes) {
             const datetime = new Date(processedRow.Datetimes);
-            if (isNaN(datetime.getTime())) {
-                console.warn(`Row ${rowNumber}: Invalid "Datetimes" format. Keeping original value.`);
-            }
+            // Note: Invalid datetime formats will be processed by the datetime classifier during event creation
         }
         
         return processedRow;
@@ -250,8 +257,6 @@ export function createCSVTable(csvData) {
         tableHTML += `<th>${escapeHtml(column)}</th>`;
     });
     
-    // Add Actions column
-    tableHTML += `<th>Actions</th>`;
     
     tableHTML += `
                     </tr>
@@ -314,25 +319,6 @@ export function createCSVTable(csvData) {
             tableHTML += `<td>${processedValue}</td>`;
         });
         
-        // Add Actions column with individual row buttons
-        tableHTML += `
-            <td class="actions-cell">
-                <div class="row-actions">
-                    <button type="button" class="row-action-btn save-event-btn" 
-                            data-row-index="${index}" 
-                            data-row-id="${row._id}" 
-                            title="Save as Event">
-                        📅 Event
-                    </button>
-                    <button type="button" class="row-action-btn create-connection-btn" 
-                            data-row-index="${index}" 
-                            data-row-id="${row._id}" 
-                            title="Create Connection">
-                        🔗 Connect
-                    </button>
-                </div>
-            </td>
-        `;
         
         tableHTML += '</tr>';
     });
@@ -364,14 +350,7 @@ export function initializeDuplicateHandlers() {
         span.addEventListener('click', handleNewEntityClick);
     });
     
-    // Add click handlers for individual row actions
-    document.querySelectorAll('.save-event-btn').forEach(btn => {
-        btn.addEventListener('click', handleSaveRowAsEvent);
-    });
-    
-    document.querySelectorAll('.create-connection-btn').forEach(btn => {
-        btn.addEventListener('click', handleCreateRowConnection);
-    });
+    // Row action buttons removed - handled in 3-step approval process
     
     // Close popover when clicking outside
     document.addEventListener('click', handleDocumentClick);
@@ -555,22 +534,10 @@ function createApprovalModal(entityInfo) {
             </div>
             
             <div class="modal-content">
-                <!-- Entity Type Selection -->
-                <div class="form-group">
-                    <label class="form-label">Entity Type:</label>
-                    <select class="entity-type-select" data-original-type="${entityType}">
-                        <option value="person" ${entityType === 'person' ? 'selected' : ''}>Person</option>
-                        <option value="place" ${entityType === 'place' ? 'selected' : ''}>Place</option>
-                        <option value="organization" ${entityType === 'organization' ? 'selected' : ''}>Organization</option>
-                        <option value="unknown" ${entityType === 'unknown' ? 'selected' : ''}>Unknown</option>
-                    </select>
-                </div>
-
                 <!-- Wikidata Override Section -->
                 <div class="form-group">
-                    <label class="form-label">Wikidata ID Override:</label>
                     <div class="wikidata-input-group">
-                        <input type="text" class="wikidata-override-input" placeholder="Enter Wikidata ID (e.g., Q123456)" 
+                        <input type="text" class="wikidata-override-input" placeholder="Wikidata ID Override (e.g., Q123456)" 
                                value="${entity?.wikidata_id || ''}">
                         <button type="button" class="wikidata-lookup-btn">Look Up</button>
                         <button type="button" class="wikidata-clear-btn">Clear</button>
@@ -619,7 +586,12 @@ function createEntityPreview(entity, originalName) {
         <div class="entity-header">
             <div class="entity-header-left">
                 <h4 class="entity-name">${escapeHtml(entity.name)}</h4>
-                <div class="entity-type-badge ${entity.type}">${entity.type}</div>
+                <select class="entity-type-select" data-original-type="${entity.type || 'unknown'}">
+                    <option value="person" ${entity.type === 'person' ? 'selected' : ''}>Person</option>
+                    <option value="place" ${entity.type === 'place' ? 'selected' : ''}>Place</option>
+                    <option value="organization" ${entity.type === 'organization' ? 'selected' : ''}>Organization</option>
+                    <option value="unknown" ${(entity.type === 'unknown' || !entity.type) ? 'selected' : ''}>Unknown</option>
+                </select>
             </div>
             <div class="entity-header-right">
                 ${entity.wikidata_id ? `<div class="wikidata-id"><a href="https://www.wikidata.org/wiki/${entity.wikidata_id}" target="_blank">${entity.wikidata_id}</a></div>` : ''}
@@ -640,34 +612,38 @@ function createUnknownEntityPreview(originalName, entityType) {
             <div class="entity-header">
                 <div class="entity-header-left">
                     <h4 class="entity-name">${escapeHtml(originalName)}</h4>
-                    <div class="entity-type-badge unknown">Unknown</div>
+                    <select class="entity-type-select" data-original-type="${entityType || 'unknown'}">
+                        <option value="person" ${entityType === 'person' ? 'selected' : ''}>Person</option>
+                        <option value="place" ${entityType === 'place' ? 'selected' : ''}>Place</option>
+                        <option value="organization" ${entityType === 'organization' ? 'selected' : ''}>Organization</option>
+                        <option value="unknown" ${(entityType === 'unknown' || !entityType) ? 'selected' : ''}>Unknown</option>
+                    </select>
                 </div>
                 <div class="entity-header-right">
                 </div>
             </div>
             <div class="original-name">Originally: "${escapeHtml(originalName)}"</div>
             <div class="entity-description">No Wikidata information found for this entity.</div>
-            <p class="help-text">Use the Wikidata ID Override above to manually specify an entity, or change the entity type if the automatic detection was incorrect.</p>
+            <p class="help-text">Use the Wikidata ID Override above to manually specify an entity, or change the entity type using the dropdown.</p>
         `;
     } else {
         // Basic entity without Wikidata
-        const typeLabels = {
-            person: 'Person',
-            place: 'Place', 
-            organization: 'Organization'
-        };
-        
         return `
             <div class="entity-header">
                 <div class="entity-header-left">
                     <h4 class="entity-name">${escapeHtml(originalName)}</h4>
-                    <div class="entity-type-badge ${entityType}">${typeLabels[entityType] || entityType}</div>
+                    <select class="entity-type-select" data-original-type="${entityType || 'unknown'}">
+                        <option value="person" ${entityType === 'person' ? 'selected' : ''}>Person</option>
+                        <option value="place" ${entityType === 'place' ? 'selected' : ''}>Place</option>
+                        <option value="organization" ${entityType === 'organization' ? 'selected' : ''}>Organization</option>
+                        <option value="unknown" ${(entityType === 'unknown' || !entityType) ? 'selected' : ''}>Unknown</option>
+                    </select>
                 </div>
                 <div class="entity-header-right">
                 </div>
             </div>
             <div class="original-name">Originally: "${escapeHtml(originalName)}"</div>
-            <div class="entity-description">Basic ${typeLabels[entityType]?.toLowerCase() || entityType} entry without Wikidata information.</div>
+            <div class="entity-description">Basic entity entry without Wikidata information.</div>
             <p class="help-text">This will be saved as a basic entity. You can add a Wikidata ID above to enrich with additional information.</p>
         `;
     }
@@ -865,7 +841,8 @@ async function handleWikidataLookup(wikidataId, entityInfo, modal) {
         
         if (wikidataEntity) {
             entityInfo.entity = wikidataEntity;
-            entityInfo.entityType = wikidataEntity.entityType || entityInfo.entityType;
+            // Ensure we have a valid entity type, fallback to 'unknown' if undefined
+            entityInfo.entityType = wikidataEntity.entityType || entityInfo.entityType || 'unknown';
             
             // Update the entity type select
             const entityTypeSelect = modal.querySelector('.entity-type-select');
@@ -922,7 +899,16 @@ async function handleTypeaheadSearch(searchTerm, entityInfo, dropdown) {
     };
     
     const kbKey = entityTypeMapping[entityInfo.entityType] || 'people';
-    const entities = kbData[kbKey] || [];
+    const kbEntities = kbData[kbKey] || [];
+    
+    // Get session entities of the same type
+    const sessionEntities = sessionApprovedEntities.filter(entity => {
+        const sessionKbKey = entityTypeMapping[entity.type] || 'people';
+        return sessionKbKey === kbKey;
+    });
+    
+    // Combine knowledge base and session entities
+    const allEntities = [...kbEntities, ...sessionEntities];
     
     if (!searchTerm.trim()) {
         hideTypeaheadDropdown(dropdown);
@@ -931,7 +917,7 @@ async function handleTypeaheadSearch(searchTerm, entityInfo, dropdown) {
     
     // Filter entities based on search term
     const term = searchTerm.toLowerCase();
-    const filteredEntities = entities.filter(entity => {
+    const filteredEntities = allEntities.filter(entity => {
         return (entity.name && entity.name.toLowerCase().includes(term)) ||
                (entity.description && entity.description.toLowerCase().includes(term)) ||
                (entity.aliases && entity.aliases.some(alias => alias.toLowerCase().includes(term)));
@@ -944,10 +930,14 @@ async function handleTypeaheadSearch(searchTerm, entityInfo, dropdown) {
     } else {
         dropdown.innerHTML = filteredEntities.map(entity => `
             <div class="typeahead-item" data-entity-id="${entity.id}" data-entity-type="${kbKey}">
-                <div class="typeahead-item-name">${escapeHtml(entity.name)}</div>
+                <div class="typeahead-item-name">
+                    ${escapeHtml(entity.name)}
+                    ${entity.isSessionEntity ? '<span class="session-entity-badge">Recently added</span>' : ''}
+                </div>
                 <div class="typeahead-item-meta">
                     ${entity.wikidata_id ? `${entity.wikidata_id} • ` : ''}
                     ${entity.description ? escapeHtml(entity.description.substring(0, 100) + (entity.description.length > 100 ? '...' : '')) : 'No description'}
+                    ${entity.aliases && entity.aliases.length > 0 ? ` • Aliases: ${entity.aliases.join(', ')}` : ''}
                 </div>
             </div>
         `).join('');
@@ -1049,6 +1039,14 @@ function updateEntityPreview(modal, entityInfo) {
         previewContainer.innerHTML = entityInfo.entity ? 
             createEntityPreview(entityInfo.entity, entityInfo.originalName) : 
             createUnknownEntityPreview(entityInfo.originalName, entityInfo.entityType);
+        
+        // Re-attach event listener to the new entity type select
+        const entityTypeSelect = previewContainer.querySelector('.entity-type-select');
+        if (entityTypeSelect) {
+            entityTypeSelect.addEventListener('change', (e) => {
+                handleEntityTypeChange(e.target.value, entityInfo, modal);
+            });
+        }
     }
 }
 
@@ -1061,11 +1059,6 @@ async function handleIntegratedApproval(entityInfo, modal) {
             await handleMergeWithSelectedEntity(entityInfo);
             updateEntityInCSVTable(entityInfo.originalName, 'merged');
             closeApprovalModal();
-            return;
-        }
-        
-        if (!entityInfo.entity && entityInfo.entityType === 'unknown') {
-            alert('Please specify an entity type or provide Wikidata information before approving.');
             return;
         }
         
@@ -1089,11 +1082,37 @@ async function handleIntegratedApproval(entityInfo, modal) {
             };
         }
         
+        // If we have an entity, ensure the type is updated from the UI selection
+        if (entityToSave && entityInfo.entityType && entityInfo.entityType !== 'unknown') {
+            console.log(`🔄 Updating entity type from "${entityToSave.type}" to "${entityInfo.entityType}"`);
+            entityToSave.type = entityInfo.entityType;
+        }
+        
+        // Final check: if we still don't have an entity to save, show error
+        if (!entityToSave) {
+            alert('Please specify an entity type or provide Wikidata information before approving.');
+            return;
+        }
+        
         // Save to Firebase
         const collectionName = getFirebaseCollectionName(entityToSave.type + 's');
-        await saveEntityToFirebase(entityToSave, collectionName);
+        const docRef = await saveEntityToFirebase(entityToSave, collectionName);
         
-        console.log(`✅ Successfully saved ${entityToSave.name} to Firebase`);
+        // Set the Firebase-generated ID on the entity
+        entityToSave.id = docRef.id;
+        
+        console.log(`✅ Successfully saved ${entityToSave.name} to Firebase with ID: ${docRef.id}`);
+        
+        // Add to session approved entities for typeahead
+        sessionApprovedEntities.push({
+            id: entityToSave.id,
+            name: entityToSave.name,
+            type: entityToSave.type,
+            description: entityToSave.description || '',
+            wikidata_id: entityToSave.wikidata_id || null,
+            aliases: entityToSave.aliases || [],
+            isSessionEntity: true
+        });
         
         // Update the CSV table to show this entity as approved
         updateEntityInCSVTable(entityInfo.originalName, 'approved');
@@ -1111,15 +1130,40 @@ async function handleIntegratedApproval(entityInfo, modal) {
 async function handleMergeWithSelectedEntity(entityInfo) {
     try {
         const { updateEntityInFirebase } = await import('./firebaseOperations.js');
-        const { getKnowledgeBaseData } = await import('./knowledgeBase.js');
+        const { getKnowledgeBaseData, loadKnowledgeBase } = await import('./knowledgeBase.js');
+        
+        // Refresh knowledge base data to ensure we have the latest entities
+        await loadKnowledgeBase();
         
         // Get the target entity from knowledge base
         const kbData = getKnowledgeBaseData();
         const entities = kbData[entityInfo.mergeTarget.type] || [];
-        const targetEntity = entities.find(entity => entity.id === entityInfo.mergeTarget.id);
+        let targetEntity = entities.find(entity => entity.id === entityInfo.mergeTarget.id);
+        
+        // If not found in KB, check session entities as fallback
+        if (!targetEntity) {
+            const sessionEntity = sessionApprovedEntities.find(entity => 
+                entity.id === entityInfo.mergeTarget.id && 
+                entityInfo.mergeTarget.type.endsWith('s') ? 
+                    entity.type + 's' === entityInfo.mergeTarget.type : 
+                    entity.type === entityInfo.mergeTarget.type
+            );
+            
+            if (sessionEntity) {
+                console.log('Found target entity in session entities, using that instead');
+                targetEntity = sessionEntity;
+            }
+        }
         
         if (!targetEntity) {
-            throw new Error('Target entity not found in knowledge base');
+            console.error('Target entity not found:', {
+                mergeTargetId: entityInfo.mergeTarget.id,
+                mergeTargetType: entityInfo.mergeTarget.type,
+                availableKBEntities: entities.map(e => ({ id: e.id, name: e.name })),
+                availableSessionEntities: sessionApprovedEntities.map(e => ({ id: e.id, name: e.name, type: e.type })),
+                kbDataKeys: Object.keys(kbData)
+            });
+            throw new Error(`Target entity not found in knowledge base or session entities. Looking for ID: ${entityInfo.mergeTarget.id} in type: ${entityInfo.mergeTarget.type}`);
         }
         
         // Add original name as alias if not already present
@@ -1141,8 +1185,25 @@ async function handleMergeWithSelectedEntity(entityInfo) {
         
         console.log(`✅ Successfully merged "${entityInfo.originalName}" as alias to "${targetEntity.name}"`);
         
+        // Update or add to session approved entities for typeahead
+        const existingIndex = sessionApprovedEntities.findIndex(entity => entity.id === updatedEntity.id);
+        const sessionEntity = {
+            id: updatedEntity.id,
+            name: updatedEntity.name,
+            type: updatedEntity.type,
+            description: updatedEntity.description || '',
+            wikidata_id: updatedEntity.wikidata_id || null,
+            aliases: updatedEntity.aliases || [],
+            isSessionEntity: true
+        };
+        
+        if (existingIndex >= 0) {
+            sessionApprovedEntities[existingIndex] = sessionEntity;
+        } else {
+            sessionApprovedEntities.push(sessionEntity);
+        }
+        
         // Refresh knowledge base to show updated data
-        const { loadKnowledgeBase } = await import('./knowledgeBase.js');
         await loadKnowledgeBase();
         
     } catch (error) {
@@ -1328,92 +1389,11 @@ export function exportCSVData(data, filename = 'knowledge_base_export.csv') {
     document.body.removeChild(link);
 }
 
-// Handle saving individual row as event
-async function handleSaveRowAsEvent(event) {
-    const btn = event.target;
-    const rowIndex = parseInt(btn.dataset.rowIndex);
-    const rowId = btn.dataset.rowId;
-    
-    // Get the current CSV data
-    if (!window.currentCSVData || !window.currentCSVData.data) {
-        console.error('No CSV data available');
-        return;
-    }
-    
-    const row = window.currentCSVData.data[rowIndex];
-    if (!row) {
-        console.error('Row not found:', rowIndex);
-        return;
-    }
-    
-    try {
-        // Disable button and show loading
-        btn.disabled = true;
-        btn.textContent = '⏳ Saving...';
-        
-        // Process row as event with entity linking
-        const eventData = await processCSVRowAsEventWithEntityLinking(row);
-        
-        // Save event
-        const { saveEventToFirebase } = await import('./eventManager.js');
-        await saveEventToFirebase(eventData);
-        
-        // Update button to show success
-        btn.textContent = '✅ Saved';
-        btn.classList.add('success');
-        
-        console.log('✅ Successfully saved row as event:', eventData);
-        
-    } catch (error) {
-        console.error('Error saving row as event:', error);
-        btn.textContent = '❌ Error';
-        btn.classList.add('error');
-    }
-}
+// Individual row action functions removed - functionality moved to 3-step approval process
+// These functions are commented out as they're no longer needed with the new workflow
 
-// Handle creating connection for individual row
-async function handleCreateRowConnection(event) {
-    const btn = event.target;
-    const rowIndex = parseInt(btn.dataset.rowIndex);
-    const rowId = btn.dataset.rowId;
-    
-    // Get the current CSV data
-    if (!window.currentCSVData || !window.currentCSVData.data) {
-        console.error('No CSV data available');
-        return;
-    }
-    
-    const row = window.currentCSVData.data[rowIndex];
-    if (!row) {
-        console.error('Row not found:', rowIndex);
-        return;
-    }
-    
-    try {
-        // Disable button and show loading
-        btn.disabled = true;
-        btn.textContent = '⏳ Creating...';
-        
-        // Infer and create connection from row
-        const connection = await inferAndCreateConnectionFromRow(row);
-        
-        if (connection) {
-            // Update button to show success
-            btn.textContent = '✅ Connected';
-            btn.classList.add('success');
-            console.log('✅ Successfully created connection:', connection);
-        } else {
-            btn.textContent = '⚠️ No Connection';
-            btn.classList.add('warning');
-            console.log('⚠️ Could not infer connection from row');
-        }
-        
-    } catch (error) {
-        console.error('Error creating connection:', error);
-        btn.textContent = '❌ Error';
-        btn.classList.add('error');
-    }
-}
+// async function handleSaveRowAsEvent(event) { ... }
+// async function handleCreateRowConnection(event) { ... }
 
 // Process CSV row as event with entity linking
 async function processCSVRowAsEventWithEntityLinking(row) {

@@ -2,6 +2,7 @@
 import { loadEntitiesFromFirebase, deleteEntityFromFirebase, deleteMultipleEntitiesFromFirebase } from './firebaseOperations.js';
 import { escapeHtml } from './dataProcessor.js';
 import { getFirebaseCollectionName } from './collectionMapping.js';
+import { getEntityConnections } from './eventManager.js';
 
 // Global knowledge base state
 let knowledgeBaseData = {
@@ -1215,7 +1216,7 @@ function createEntityPopover(entity, entityType) {
     });
     
     // Add connections if any exist
-    const connections = getEntityConnections(entity.id, entityType);
+    const connections = getEntityConnections(entity.id, entityType, knowledgeBaseData);
     if (connections && connections.length > 0) {
         popoverHTML += `
             <div class="kb-popover-section">
