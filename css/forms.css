@@ -319,3 +319,85 @@ select {
     width: 100%;
     max-width: var(--size-200);
 }
+
+/* CSV Action Buttons */
+.csv-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    padding: var(--space-4);
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-200);
+}
+
+.action-btn {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.action-btn.primary {
+    background: var(--primary-color);
+    color: var(--white);
+    border-color: var(--primary-color);
+}
+
+.action-btn.primary:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+.action-btn.secondary {
+    background: var(--white);
+    color: var(--gray-700);
+    border-color: var(--gray-300);
+}
+
+.action-btn.secondary:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+}
+
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Connection Modal Specific Styles */
+.connection-modal-container {
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.connection-modal-container .form-section {
+    margin-bottom: var(--space-6);
+    padding: var(--space-4);
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-200);
+}
+
+.connection-modal-container .form-section h3 {
+    margin: 0 0 var(--space-4) 0;
+    font-size: var(--font-size-lg);
+    color: var(--gray-800);
+    font-weight: 600;
+}
+
+.connection-modal-container .form-group {
+    margin-bottom: var(--space-4);
+}
+
+.connection-modal-container .form-group:last-child {
+    margin-bottom: 0;
+}

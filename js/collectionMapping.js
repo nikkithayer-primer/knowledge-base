@@ -5,14 +5,18 @@
 export const COLLECTION_MAPPING = {
     'people': 'persons',           // UI: people -> Firebase: persons
     'places': 'places',            // UI: places -> Firebase: places
-    'organizations': 'organizations' // UI: organizations -> Firebase: organizations
+    'organizations': 'organizations', // UI: organizations -> Firebase: organizations
+    'events': 'events',            // UI: events -> Firebase: events
+    'connections': 'connections'   // UI: connections -> Firebase: connections
 };
 
 // Map Firebase collection names back to entity types
 export const REVERSE_COLLECTION_MAPPING = {
     'persons': 'people',
     'places': 'places', 
-    'organizations': 'organizations'
+    'organizations': 'organizations',
+    'events': 'events',
+    'connections': 'connections'
 };
 
 // Get Firebase collection name from entity type

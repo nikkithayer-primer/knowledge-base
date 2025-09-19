@@ -1,5 +1,48 @@
 // Entity field definitions for different entity types
 export const entityFields = {
+    events: [
+        // Basic Event Information
+        { name: 'actor', type: 'text', required: true, placeholder: 'LeBron James', group: 'basic' },
+        { name: 'action', type: 'text', required: true, placeholder: 'scored', group: 'basic' },
+        { name: 'target', type: 'text', placeholder: '30 points', group: 'basic' },
+        { name: 'sentence', type: 'textarea', required: true, placeholder: 'Full sentence describing the event', group: 'basic' },
+        
+        // Date and Time Information
+        { name: 'dateReceived', type: 'datetime-local', required: true, placeholder: 'Publication date', group: 'temporal' },
+        { name: 'originalDatetime', type: 'text', required: true, placeholder: 'Tuesday night', group: 'temporal' },
+        { name: 'resolvedDatetime', type: 'datetime-local', placeholder: 'Resolved datetime', group: 'temporal' },
+        
+        // Location Information
+        { name: 'locations', type: 'array', placeholder: 'Los Angeles, San Francisco', group: 'location' },
+        
+        // Entity References
+        { name: 'actorEntityId', type: 'text', placeholder: 'Entity ID for actor', group: 'references' },
+        { name: 'actorEntityType', type: 'text', placeholder: 'Entity type for actor', group: 'references' },
+        { name: 'targetEntityId', type: 'text', placeholder: 'Entity ID for target', group: 'references' },
+        { name: 'targetEntityType', type: 'text', placeholder: 'Entity type for target', group: 'references' },
+        { name: 'locationEntityIds', type: 'array', placeholder: 'Entity IDs for locations', group: 'references' },
+        { name: 'locationEntityTypes', type: 'array', placeholder: 'Entity types for locations', group: 'references' },
+        
+        // Metadata
+        { name: 'source', type: 'text', placeholder: 'Source of the event', group: 'metadata' },
+        { name: 'confidence', type: 'select', options: ['high', 'medium', 'low'], group: 'metadata' }
+    ],
+    connections: [
+        // Connection Information
+        { name: 'fromEntityId', type: 'text', required: true, placeholder: 'Source entity ID', group: 'basic' },
+        { name: 'fromEntityType', type: 'select', required: true, options: ['people', 'places', 'organizations'], group: 'basic' },
+        { name: 'toEntityId', type: 'text', required: true, placeholder: 'Target entity ID', group: 'basic' },
+        { name: 'toEntityType', type: 'select', required: true, options: ['people', 'places', 'organizations'], group: 'basic' },
+        { name: 'relationshipType', type: 'text', required: true, placeholder: 'teacher_of', group: 'basic' },
+        { name: 'relationshipLabel', type: 'text', required: true, placeholder: 'teacher of', group: 'basic' },
+        { name: 'reverseRelationshipType', type: 'text', placeholder: 'student_of', group: 'basic' },
+        { name: 'reverseRelationshipLabel', type: 'text', placeholder: 'student of', group: 'basic' },
+        
+        // Metadata
+        { name: 'source', type: 'text', placeholder: 'Source of the connection', group: 'metadata' },
+        { name: 'confidence', type: 'select', options: ['high', 'medium', 'low'], group: 'metadata' },
+        { name: 'eventId', type: 'text', placeholder: 'Related event ID', group: 'metadata' }
+    ],
     people: [
         // Basic Information
         { name: 'wikidata_id', type: 'text', placeholder: 'Q123456 (optional)', group: 'basic' },

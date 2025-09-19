@@ -7,13 +7,17 @@ import { getFirebaseCollectionName } from './collectionMapping.js';
 let knowledgeBaseData = {
     people: [],
     places: [],
-    organizations: []
+    organizations: [],
+    events: [],
+    connections: []
 };
 
 let filteredData = {
     people: [],
     places: [],
-    organizations: []
+    organizations: [],
+    events: [],
+    connections: []
 };
 
 // Flag to track if connection form listeners have been set up
@@ -40,32 +44,40 @@ export async function loadKnowledgeBase() {
         const peopleCollection = getFirebaseCollectionName('people');
         const placesCollection = getFirebaseCollectionName('places');
         const organizationsCollection = getFirebaseCollectionName('organizations');
+        const eventsCollection = getFirebaseCollectionName('events');
+        const connectionsCollection = getFirebaseCollectionName('connections');
         
         console.log('📋 Collection names:', {
             people: peopleCollection,
             places: placesCollection,
-            organizations: organizationsCollection
+            organizations: organizationsCollection,
+            events: eventsCollection,
+            connections: connectionsCollection
         });
         
-        const [people, places, organizations] = await Promise.all([
+        const [people, places, organizations, events, connections] = await Promise.all([
             loadEntitiesFromFirebase(peopleCollection, 100),
             loadEntitiesFromFirebase(placesCollection, 100),
-            loadEntitiesFromFirebase(organizationsCollection, 100)
+            loadEntitiesFromFirebase(organizationsCollection, 100),
+            loadEntitiesFromFirebase(eventsCollection, 100),
+            loadEntitiesFromFirebase(connectionsCollection, 100)
         ]);
         
         console.log('📊 Knowledge Base loaded:', {
             people: people.length,
             places: places.length, 
             organizations: organizations.length,
+            events: events.length,
+            connections: connections.length,
             peopleData: people.map(p => ({ id: p.id, name: p.name })),
             placesData: places.map(p => ({ id: p.id, name: p.name })),
             organizationsData: organizations.map(o => ({ id: o.id, name: o.name }))
         });
         
-        knowledgeBaseData = { people, places, organizations };
+        knowledgeBaseData = { people, places, organizations, events, connections };
         filteredData = { ...knowledgeBaseData };
         
-        const totalEntities = people.length + places.length + organizations.length;
+        const totalEntities = people.length + places.length + organizations.length + events.length;
         
         if (totalEntities === 0) {
             emptyState.style.display = 'block';
@@ -74,7 +86,7 @@ export async function loadKnowledgeBase() {
         } else {
             emptyState.style.display = 'none';
             content.style.display = 'block';
-            statsElement.textContent = `${totalEntities} entities: ${people.length} people, ${places.length} places, ${organizations.length} organizations`;
+            statsElement.textContent = `${totalEntities} entities: ${people.length} people, ${places.length} places, ${organizations.length} organizations, ${events.length} events`;
         }
         
         renderKnowledgeBase();
@@ -99,6 +111,8 @@ function renderKnowledgeBase() {
     renderEntityTab('people', filteredData.people);
     renderEntityTab('places', filteredData.places);
     renderEntityTab('organizations', filteredData.organizations);
+    renderEntityTab('events', filteredData.events);
+    renderEntityTab('connections', filteredData.connections);
     
     // Show/hide empty state based on current active tab
     updateEmptyState();
@@ -204,11 +218,29 @@ function createEntityTable(entities, entityType) {
 
 // Get table columns for simplified knowledge base view
 function getTableColumns(entityType) {
-    return [
-        { key: 'name', label: 'Name' },
-        { key: 'wikidata_id', label: 'Wikidata ID' },
-        { key: 'actions', label: 'Actions' }
-    ];
+    if (entityType === 'events') {
+        return [
+            { key: 'actor', label: 'Actor' },
+            { key: 'action', label: 'Action' },
+            { key: 'target', label: 'Target' },
+            { key: 'resolvedDatetime', label: 'Date/Time' },
+            { key: 'actions', label: 'Actions' }
+        ];
+    } else if (entityType === 'connections') {
+        return [
+            { key: 'fromEntity', label: 'From' },
+            { key: 'relationshipLabel', label: 'Relationship' },
+            { key: 'toEntity', label: 'To' },
+            { key: 'source', label: 'Source' },
+            { key: 'actions', label: 'Actions' }
+        ];
+    } else {
+        return [
+            { key: 'name', label: 'Name' },
+            { key: 'wikidata_id', label: 'Wikidata ID' },
+            { key: 'actions', label: 'Actions' }
+        ];
+    }
 }
 
 // Get formatted value for entity field
@@ -222,6 +254,9 @@ function getEntityValue(entity, key) {
     // Special formatting for specific fields
     switch (key) {
         case 'name':
+        case 'actor':
+        case 'action':
+        case 'target':
             return escapeHtml(value);
             
         case 'description':
@@ -231,6 +266,29 @@ function getEntityValue(entity, key) {
             
         case 'wikidata_id':
             return value ? `<a href="https://www.wikidata.org/wiki/${value}" target="_blank" class="wikidata-link">${value}</a>` : '<span class="empty-value">—</span>';
+            
+        case 'resolvedDatetime':
+            if (value) {
+                const date = new Date(value);
+                return date.toLocaleString();
+            }
+            return '<span class="empty-value">—</span>';
+            
+        case 'fromEntity':
+            // Look up entity name from ID
+            const fromEntity = findEntityById(entity.fromEntityId, entity.fromEntityType);
+            return fromEntity ? escapeHtml(fromEntity.name) : escapeHtml(entity.fromEntityId);
+            
+        case 'toEntity':
+            // Look up entity name from ID
+            const toEntity = findEntityById(entity.toEntityId, entity.toEntityType);
+            return toEntity ? escapeHtml(toEntity.name) : escapeHtml(entity.toEntityId);
+            
+        case 'relationshipLabel':
+            return escapeHtml(value);
+            
+        case 'source':
+            return escapeHtml(value);
             
         case 'population':
             return typeof value === 'number' ? value.toLocaleString() : escapeHtml(value);
@@ -276,6 +334,8 @@ function updateTabCounts() {
     const peopleTab = document.getElementById('peopleKBTab');
     const placesTab = document.getElementById('placesKBTab');
     const organizationsTab = document.getElementById('organizationsKBTab');
+    const eventsTab = document.getElementById('eventsKBTab');
+    const connectionsTab = document.getElementById('connectionsKBTab');
     
     if (peopleTab) {
         const count = filteredData.people.length;
@@ -293,6 +353,18 @@ function updateTabCounts() {
         const count = filteredData.organizations.length;
         organizationsTab.innerHTML = `🏢 Organizations ${count > 0 ? `(${count})` : ''}`;
         organizationsTab.setAttribute('data-count', count);
+    }
+    
+    if (eventsTab) {
+        const count = filteredData.events.length;
+        eventsTab.innerHTML = `📅 Events ${count > 0 ? `(${count})` : ''}`;
+        eventsTab.setAttribute('data-count', count);
+    }
+    
+    if (connectionsTab) {
+        const count = filteredData.connections.length;
+        connectionsTab.innerHTML = `🔗 Connections ${count > 0 ? `(${count})` : ''}`;
+        connectionsTab.setAttribute('data-count', count);
     }
 }
 
@@ -525,7 +597,9 @@ function filterBySearchTerm(searchTerm) {
         filteredData = {
             people: knowledgeBaseData.people.filter(entity => matchesSearch(entity, term)),
             places: knowledgeBaseData.places.filter(entity => matchesSearch(entity, term)),
-            organizations: knowledgeBaseData.organizations.filter(entity => matchesSearch(entity, term))
+            organizations: knowledgeBaseData.organizations.filter(entity => matchesSearch(entity, term)),
+            events: knowledgeBaseData.events.filter(entity => matchesSearchEvent(entity, term)),
+            connections: knowledgeBaseData.connections.filter(entity => matchesSearchConnection(entity, term))
         };
     }
     
@@ -555,6 +629,44 @@ function matchesSearch(entity, term) {
     return false;
 }
 
+// Check if event matches search term
+function matchesSearchEvent(event, term) {
+    // Search in actor, action, target, sentence
+    if (event.actor && event.actor.toLowerCase().includes(term)) return true;
+    if (event.action && event.action.toLowerCase().includes(term)) return true;
+    if (event.target && event.target.toLowerCase().includes(term)) return true;
+    if (event.sentence && event.sentence.toLowerCase().includes(term)) return true;
+    
+    // Search in locations
+    if (event.locations && Array.isArray(event.locations)) {
+        if (event.locations.some(location => location.toLowerCase().includes(term))) return true;
+    }
+    
+    // Search in source
+    if (event.source && event.source.toLowerCase().includes(term)) return true;
+    
+    return false;
+}
+
+// Check if connection matches search term
+function matchesSearchConnection(connection, term) {
+    // Search in relationship label
+    if (connection.relationshipLabel && connection.relationshipLabel.toLowerCase().includes(term)) return true;
+    if (connection.relationshipType && connection.relationshipType.toLowerCase().includes(term)) return true;
+    
+    // Search in entity names (need to look up by ID)
+    const fromEntity = findEntityById(connection.fromEntityId, connection.fromEntityType);
+    const toEntity = findEntityById(connection.toEntityId, connection.toEntityType);
+    
+    if (fromEntity && fromEntity.name && fromEntity.name.toLowerCase().includes(term)) return true;
+    if (toEntity && toEntity.name && toEntity.name.toLowerCase().includes(term)) return true;
+    
+    // Search in source
+    if (connection.source && connection.source.toLowerCase().includes(term)) return true;
+    
+    return false;
+}
+
 // Update knowledge base tab with count
 function updateKnowledgeBaseTab(count) {
     const knowledgeBaseTab = document.getElementById('knowledgeBaseTab');
@@ -571,10 +683,12 @@ function updateKnowledgeBaseTab(count) {
 // Get knowledge base statistics
 export function getKnowledgeBaseStats() {
     return {
-        total: knowledgeBaseData.people.length + knowledgeBaseData.places.length + knowledgeBaseData.organizations.length,
+        total: knowledgeBaseData.people.length + knowledgeBaseData.places.length + knowledgeBaseData.organizations.length + knowledgeBaseData.events.length,
         people: knowledgeBaseData.people.length,
         places: knowledgeBaseData.places.length,
-        organizations: knowledgeBaseData.organizations.length
+        organizations: knowledgeBaseData.organizations.length,
+        events: knowledgeBaseData.events.length,
+        connections: knowledgeBaseData.connections.length
     };
 }
 
@@ -588,6 +702,8 @@ export function initializeKnowledgeBaseListeners() {
     const peopleTab = document.getElementById('peopleKBTab');
     const placesTab = document.getElementById('placesKBTab');
     const organizationsTab = document.getElementById('organizationsKBTab');
+    const eventsTab = document.getElementById('eventsKBTab');
+    const connectionsTab = document.getElementById('connectionsKBTab');
     
     if (peopleTab) {
         peopleTab.addEventListener('click', () => switchEntityTab('people'));
@@ -597,6 +713,12 @@ export function initializeKnowledgeBaseListeners() {
     }
     if (organizationsTab) {
         organizationsTab.addEventListener('click', () => switchEntityTab('organizations'));
+    }
+    if (eventsTab) {
+        eventsTab.addEventListener('click', () => switchEntityTab('events'));
+    }
+    if (connectionsTab) {
+        connectionsTab.addEventListener('click', () => switchEntityTab('connections'));
     }
     
     // Search listener

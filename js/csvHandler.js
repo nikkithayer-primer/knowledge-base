@@ -1,5 +1,6 @@
 // CSV handling functionality
 import { showStatus } from './ui.js';
+import { processCSVRowAsEvent, saveEventToFirebase } from './eventManager.js';
 
 // Expected CSV columns (support both singular and plural forms)
 const EXPECTED_COLUMNS = [
@@ -249,6 +250,9 @@ export function createCSVTable(csvData) {
         tableHTML += `<th>${escapeHtml(column)}</th>`;
     });
     
+    // Add Actions column
+    tableHTML += `<th>Actions</th>`;
+    
     tableHTML += `
                     </tr>
                 </thead>
@@ -310,6 +314,26 @@ export function createCSVTable(csvData) {
             tableHTML += `<td>${processedValue}</td>`;
         });
         
+        // Add Actions column with individual row buttons
+        tableHTML += `
+            <td class="actions-cell">
+                <div class="row-actions">
+                    <button type="button" class="row-action-btn save-event-btn" 
+                            data-row-index="${index}" 
+                            data-row-id="${row._id}" 
+                            title="Save as Event">
+                        📅 Event
+                    </button>
+                    <button type="button" class="row-action-btn create-connection-btn" 
+                            data-row-index="${index}" 
+                            data-row-id="${row._id}" 
+                            title="Create Connection">
+                        🔗 Connect
+                    </button>
+                </div>
+            </td>
+        `;
+        
         tableHTML += '</tr>';
     });
     
@@ -338,6 +362,15 @@ export function initializeDuplicateHandlers() {
     // Add click handlers to new entities
     document.querySelectorAll('.new-entity').forEach(span => {
         span.addEventListener('click', handleNewEntityClick);
+    });
+    
+    // Add click handlers for individual row actions
+    document.querySelectorAll('.save-event-btn').forEach(btn => {
+        btn.addEventListener('click', handleSaveRowAsEvent);
+    });
+    
+    document.querySelectorAll('.create-connection-btn').forEach(btn => {
+        btn.addEventListener('click', handleCreateRowConnection);
     });
     
     // Close popover when clicking outside
@@ -523,7 +556,7 @@ function createApprovalModal(entityInfo) {
             
             <div class="modal-content">
                 <!-- Entity Type Selection -->
-                <div class="modal-section modal-section-gray">
+                <div class="form-group">
                     <label class="form-label">Entity Type:</label>
                     <select class="entity-type-select" data-original-type="${entityType}">
                         <option value="person" ${entityType === 'person' ? 'selected' : ''}>Person</option>
@@ -534,7 +567,7 @@ function createApprovalModal(entityInfo) {
                 </div>
 
                 <!-- Wikidata Override Section -->
-                <div class="modal-section modal-section-gray">
+                <div class="form-group">
                     <label class="form-label">Wikidata ID Override:</label>
                     <div class="wikidata-input-group">
                         <input type="text" class="wikidata-override-input" placeholder="Enter Wikidata ID (e.g., Q123456)" 
@@ -553,24 +586,25 @@ function createApprovalModal(entityInfo) {
                     </div>
                 </div>
 
-                <!-- Knowledge Base Search/Merge Section -->
+                <!-- Knowledge Base Search/Merge Section with Typeahead -->
                 <div class="kb-merge-section">
                     <h3>Merge with Existing Knowledge Base Entry</h3>
-                    <div class="kb-search-group">
-                        <input type="text" class="kb-search-input" placeholder="Search existing entries to merge with...">
-                        <div class="kb-search-results" id="kbSearchResults"></div>
+                    <div class="typeahead-container">
+                        <input type="text" class="typeahead-input" id="kbTypeaheadInput" placeholder="Start typing to search existing entries...">
+                        <div class="typeahead-dropdown" id="kbTypeaheadDropdown"></div>
+                    </div>
+                    <div id="selectedMergeTarget" class="selected-merge-target" style="display: none;">
+                        <div class="merge-target-info"></div>
+                        <button type="button" class="clear-selection-btn">Clear Selection</button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Actions -->
-                <div class="approval-actions">
-                    <button type="button" class="approve-btn" data-action="approve">
-                        ✓ Approve & Add to Knowledge Base
-                    </button>
-                    <button type="button" class="reject-btn" data-action="reject">
-                        ✗ Reject
-                    </button>
-                </div>
+            <!-- Fixed Approve Button -->
+            <div class="modal-footer-fixed">
+                <button type="button" class="approve-btn-fixed" data-action="approve">
+                    ✓ Approve & Add to Knowledge Base
+                </button>
             </div>
         </div>
     `;
@@ -582,10 +616,16 @@ function createApprovalModal(entityInfo) {
 // Create entity preview for modal
 function createEntityPreview(entity, originalName) {
     return `
-        <div class="entity-type-badge ${entity.type}">${entity.type}</div>
-        <h4 class="entity-name">${escapeHtml(entity.name)}</h4>
+        <div class="entity-header">
+            <div class="entity-header-left">
+                <h4 class="entity-name">${escapeHtml(entity.name)}</h4>
+                <div class="entity-type-badge ${entity.type}">${entity.type}</div>
+            </div>
+            <div class="entity-header-right">
+                ${entity.wikidata_id ? `<div class="wikidata-id"><a href="https://www.wikidata.org/wiki/${entity.wikidata_id}" target="_blank">${entity.wikidata_id}</a></div>` : ''}
+            </div>
+        </div>
         <div class="original-name">Originally: "${escapeHtml(originalName)}"</div>
-        ${entity.wikidata_id ? `<div class="wikidata-id">Wikidata ID: <a href="https://www.wikidata.org/wiki/${entity.wikidata_id}" target="_blank">${entity.wikidata_id}</a></div>` : ''}
         ${entity.description ? `<div class="entity-description">${escapeHtml(entity.description)}</div>` : ''}
         <div class="entity-details">
             ${createEntityDetailsForModal(entity)}
@@ -597,8 +637,15 @@ function createEntityPreview(entity, originalName) {
 function createUnknownEntityPreview(originalName, entityType) {
     if (entityType === 'unknown') {
         return `
-            <div class="entity-type-badge unknown">Unknown</div>
-            <h4 class="entity-name">${escapeHtml(originalName)}</h4>
+            <div class="entity-header">
+                <div class="entity-header-left">
+                    <h4 class="entity-name">${escapeHtml(originalName)}</h4>
+                    <div class="entity-type-badge unknown">Unknown</div>
+                </div>
+                <div class="entity-header-right">
+                </div>
+            </div>
+            <div class="original-name">Originally: "${escapeHtml(originalName)}"</div>
             <div class="entity-description">No Wikidata information found for this entity.</div>
             <p class="help-text">Use the Wikidata ID Override above to manually specify an entity, or change the entity type if the automatic detection was incorrect.</p>
         `;
@@ -611,8 +658,15 @@ function createUnknownEntityPreview(originalName, entityType) {
         };
         
         return `
-            <div class="entity-type-badge ${entityType}">${typeLabels[entityType] || entityType}</div>
-            <h4 class="entity-name">${escapeHtml(originalName)}</h4>
+            <div class="entity-header">
+                <div class="entity-header-left">
+                    <h4 class="entity-name">${escapeHtml(originalName)}</h4>
+                    <div class="entity-type-badge ${entityType}">${typeLabels[entityType] || entityType}</div>
+                </div>
+                <div class="entity-header-right">
+                </div>
+            </div>
+            <div class="original-name">Originally: "${escapeHtml(originalName)}"</div>
             <div class="entity-description">Basic ${typeLabels[entityType]?.toLowerCase() || entityType} entry without Wikidata information.</div>
             <p class="help-text">This will be saved as a basic entity. You can add a Wikidata ID above to enrich with additional information.</p>
         `;
@@ -681,27 +735,61 @@ function setupApprovalModalEventListeners(modal, entityInfo) {
         });
     }
 
-    // Knowledge base search
-    const kbSearchInput = modal.querySelector('.kb-search-input');
-    if (kbSearchInput) {
-        kbSearchInput.addEventListener('input', (e) => {
-            handleKBSearch(e.target.value, entityInfo, modal);
+    // Typeahead search functionality
+    const typeaheadInput = modal.querySelector('#kbTypeaheadInput');
+    const typeaheadDropdown = modal.querySelector('#kbTypeaheadDropdown');
+    const selectedMergeTarget = modal.querySelector('#selectedMergeTarget');
+    const clearSelectionBtn = modal.querySelector('.clear-selection-btn');
+    
+    if (typeaheadInput && typeaheadDropdown) {
+        let currentSelection = null;
+        let highlightedIndex = -1;
+        
+        typeaheadInput.addEventListener('input', (e) => {
+            handleTypeaheadSearch(e.target.value, entityInfo, typeaheadDropdown);
         });
         
-        // Load initial results
-        handleKBSearch('', entityInfo, modal);
+        typeaheadInput.addEventListener('keydown', (e) => {
+            const items = typeaheadDropdown.querySelectorAll('.typeahead-item');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlightedIndex = Math.min(highlightedIndex + 1, items.length - 1);
+                updateHighlight(items, highlightedIndex);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                highlightedIndex = Math.max(highlightedIndex - 1, -1);
+                updateHighlight(items, highlightedIndex);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (highlightedIndex >= 0 && items[highlightedIndex]) {
+                    selectMergeTarget(items[highlightedIndex], entityInfo, modal);
+                }
+            } else if (e.key === 'Escape') {
+                hideTypeaheadDropdown(typeaheadDropdown);
+                highlightedIndex = -1;
+            }
+        });
+        
+        // Click outside to close dropdown
+        document.addEventListener('click', (e) => {
+            if (!typeaheadInput.contains(e.target) && !typeaheadDropdown.contains(e.target)) {
+                hideTypeaheadDropdown(typeaheadDropdown);
+                highlightedIndex = -1;
+            }
+        });
     }
     
-    // Action buttons
-    const approveBtn = modal.querySelector('.approve-btn');
-    const rejectBtn = modal.querySelector('.reject-btn');
+    if (clearSelectionBtn) {
+        clearSelectionBtn.addEventListener('click', () => {
+            clearMergeSelection(modal, entityInfo);
+        });
+    }
     
+    // Approve button (now fixed at bottom)
+    const approveBtn = modal.querySelector('.approve-btn-fixed');
     if (approveBtn) {
         approveBtn.addEventListener('click', () => handleIntegratedApproval(entityInfo, modal));
-    }
-    
-    if (rejectBtn) {
-        rejectBtn.addEventListener('click', () => handleApprovalAction('reject', entityInfo));
     }
     
     // Close on backdrop click
@@ -756,11 +844,8 @@ async function handleEntityTypeChange(newType, entityInfo, modal) {
         }
     }
     
-    // Update KB search results for the new type
-    const kbSearchInput = modal.querySelector('.kb-search-input');
-    if (kbSearchInput) {
-        handleKBSearch(kbSearchInput.value, entityInfo, modal);
-    }
+    // Clear any existing merge selection when type changes
+    clearMergeSelection(modal, entityInfo);
 }
 
 // Handle Wikidata lookup
@@ -822,12 +907,10 @@ function handleWikidataClear(entityInfo, modal) {
     console.log('🗑️ Cleared Wikidata data for:', entityInfo.originalName);
 }
 
-// Handle knowledge base search
-async function handleKBSearch(searchTerm, entityInfo, modal) {
-    const resultsContainer = modal.querySelector('#kbSearchResults');
-    if (!resultsContainer) return;
-
-    // Get knowledge base data
+// Handle typeahead search for knowledge base entries
+async function handleTypeaheadSearch(searchTerm, entityInfo, dropdown) {
+    if (!dropdown) return;
+    
     const { getKnowledgeBaseData } = await import('./knowledgeBase.js');
     const kbData = getKnowledgeBaseData();
     
@@ -840,52 +923,124 @@ async function handleKBSearch(searchTerm, entityInfo, modal) {
     
     const kbKey = entityTypeMapping[entityInfo.entityType] || 'people';
     const entities = kbData[kbKey] || [];
-
-    // Filter entities based on search term
-    let filteredEntities = entities;
-    if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        filteredEntities = entities.filter(entity => {
-            return (entity.name && entity.name.toLowerCase().includes(term)) ||
-                   (entity.description && entity.description.toLowerCase().includes(term)) ||
-                   (entity.aliases && entity.aliases.some(alias => alias.toLowerCase().includes(term)));
-        });
+    
+    if (!searchTerm.trim()) {
+        hideTypeaheadDropdown(dropdown);
+        return;
     }
-
+    
+    // Filter entities based on search term
+    const term = searchTerm.toLowerCase();
+    const filteredEntities = entities.filter(entity => {
+        return (entity.name && entity.name.toLowerCase().includes(term)) ||
+               (entity.description && entity.description.toLowerCase().includes(term)) ||
+               (entity.aliases && entity.aliases.some(alias => alias.toLowerCase().includes(term)));
+    }).slice(0, 10); // Limit to 10 results
+    
     // Display results
     if (filteredEntities.length === 0) {
-        resultsContainer.innerHTML = `
-            <div class="kb-no-results">
-                ${searchTerm.trim() ? 'No matching entities found.' : `No ${entityInfo.entityType}s found in knowledge base.`}
-            </div>
-        `;
+        dropdown.innerHTML = '<div class="typeahead-no-results">No matching entities found</div>';
+        showTypeaheadDropdown(dropdown);
     } else {
-        resultsContainer.innerHTML = filteredEntities.slice(0, 5).map(entity => `
-            <div class="kb-result-item" data-entity-id="${entity.id}" data-entity-type="${kbKey}">
-                <div class="kb-result-header">
-                    <h4 class="kb-result-name">${escapeHtml(entity.name)}</h4>
-                    ${entity.wikidata_id ? `<span class="kb-result-wikidata">${entity.wikidata_id}</span>` : ''}
+        dropdown.innerHTML = filteredEntities.map(entity => `
+            <div class="typeahead-item" data-entity-id="${entity.id}" data-entity-type="${kbKey}">
+                <div class="typeahead-item-name">${escapeHtml(entity.name)}</div>
+                <div class="typeahead-item-meta">
+                    ${entity.wikidata_id ? `${entity.wikidata_id} • ` : ''}
+                    ${entity.description ? escapeHtml(entity.description.substring(0, 100) + (entity.description.length > 100 ? '...' : '')) : 'No description'}
                 </div>
-                ${entity.description ? `<p class="kb-result-description">${escapeHtml(entity.description)}</p>` : ''}
-                ${entity.aliases && entity.aliases.length > 0 ? `<div class="kb-result-aliases">Aliases: ${entity.aliases.map(alias => escapeHtml(alias)).join(', ')}</div>` : ''}
-                <button type="button" class="select-merge-btn" data-entity-id="${entity.id}" data-entity-type="${kbKey}">
-                    Merge with this entry
-                </button>
             </div>
         `).join('');
-
-        // Add click handlers for merge buttons
-        const mergeBtns = resultsContainer.querySelectorAll('.select-merge-btn');
-        mergeBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const targetEntityId = btn.dataset.entityId;
-                const targetEntityType = btn.dataset.entityType;
-                handleMergeWithKBEntity(entityInfo, targetEntityId, targetEntityType, filteredEntities);
+        
+        // Add click handlers for items
+        dropdown.querySelectorAll('.typeahead-item').forEach(item => {
+            item.addEventListener('click', () => {
+                selectMergeTarget(item, entityInfo, item.closest('.approval-modal'));
             });
         });
+        
+        showTypeaheadDropdown(dropdown);
     }
 }
+
+// Show typeahead dropdown
+function showTypeaheadDropdown(dropdown) {
+    dropdown.classList.add('show');
+}
+
+// Hide typeahead dropdown
+function hideTypeaheadDropdown(dropdown) {
+    dropdown.classList.remove('show');
+}
+
+// Update highlight for keyboard navigation
+function updateHighlight(items, highlightedIndex) {
+    items.forEach((item, index) => {
+        if (index === highlightedIndex) {
+            item.classList.add('highlighted');
+        } else {
+            item.classList.remove('highlighted');
+        }
+    });
+}
+
+// Select a merge target from typeahead
+function selectMergeTarget(item, entityInfo, modal) {
+    const entityId = item.dataset.entityId;
+    const entityType = item.dataset.entityType;
+    const entityName = item.querySelector('.typeahead-item-name').textContent;
+    
+    // Store selection in entityInfo
+    entityInfo.mergeTarget = {
+        id: entityId,
+        type: entityType,
+        name: entityName
+    };
+    
+    // Update UI to show selection
+    const typeaheadInput = modal.querySelector('#kbTypeaheadInput');
+    const selectedMergeTarget = modal.querySelector('#selectedMergeTarget');
+    const mergeTargetInfo = modal.querySelector('.merge-target-info');
+    const dropdown = modal.querySelector('#kbTypeaheadDropdown');
+    
+    if (typeaheadInput) {
+        typeaheadInput.value = entityName;
+        typeaheadInput.style.background = '#e6f3ff';
+        typeaheadInput.style.borderColor = '#0066cc';
+    }
+    
+    if (selectedMergeTarget && mergeTargetInfo) {
+        mergeTargetInfo.innerHTML = `
+            <div class="merge-target-selected">
+                <strong>Selected for merge:</strong> ${escapeHtml(entityName)}
+                <div class="merge-target-type">${entityType}</div>
+            </div>
+        `;
+        selectedMergeTarget.style.display = 'block';
+    }
+    
+    hideTypeaheadDropdown(dropdown);
+}
+
+// Clear merge selection
+function clearMergeSelection(modal, entityInfo) {
+    delete entityInfo.mergeTarget;
+    
+    const typeaheadInput = modal.querySelector('#kbTypeaheadInput');
+    const selectedMergeTarget = modal.querySelector('#selectedMergeTarget');
+    
+    if (typeaheadInput) {
+        typeaheadInput.value = '';
+        typeaheadInput.style.background = '';
+        typeaheadInput.style.borderColor = '';
+    }
+    
+    if (selectedMergeTarget) {
+        selectedMergeTarget.style.display = 'none';
+    }
+}
+
+// Old handleKBSearch function removed - replaced with typeahead functionality
 
 // Update entity preview in modal
 function updateEntityPreview(modal, entityInfo) {
@@ -900,6 +1055,15 @@ function updateEntityPreview(modal, entityInfo) {
 // Handle integrated approval (main approval action)
 async function handleIntegratedApproval(entityInfo, modal) {
     try {
+        // Check if user selected a merge target
+        if (entityInfo.mergeTarget) {
+            // Handle merging with existing entity
+            await handleMergeWithSelectedEntity(entityInfo);
+            updateEntityInCSVTable(entityInfo.originalName, 'merged');
+            closeApprovalModal();
+            return;
+        }
+        
         if (!entityInfo.entity && entityInfo.entityType === 'unknown') {
             alert('Please specify an entity type or provide Wikidata information before approving.');
             return;
@@ -940,6 +1104,50 @@ async function handleIntegratedApproval(entityInfo, modal) {
     } catch (error) {
         console.error('Error handling integrated approval:', error);
         alert(`Error: ${error.message}`);
+    }
+}
+
+// Handle merging with selected entity from typeahead
+async function handleMergeWithSelectedEntity(entityInfo) {
+    try {
+        const { updateEntityInFirebase } = await import('./firebaseOperations.js');
+        const { getKnowledgeBaseData } = await import('./knowledgeBase.js');
+        
+        // Get the target entity from knowledge base
+        const kbData = getKnowledgeBaseData();
+        const entities = kbData[entityInfo.mergeTarget.type] || [];
+        const targetEntity = entities.find(entity => entity.id === entityInfo.mergeTarget.id);
+        
+        if (!targetEntity) {
+            throw new Error('Target entity not found in knowledge base');
+        }
+        
+        // Add original name as alias if not already present
+        const updatedEntity = { ...targetEntity };
+        if (!updatedEntity.aliases) {
+            updatedEntity.aliases = [];
+        }
+        
+        const aliasExists = updatedEntity.aliases.some(alias => 
+            alias.toLowerCase().trim() === entityInfo.originalName.toLowerCase().trim()
+        );
+        
+        if (!aliasExists) {
+            updatedEntity.aliases.push(entityInfo.originalName);
+        }
+        
+        // Update the entity in Firebase
+        await updateEntityInFirebase(updatedEntity, entityInfo.mergeTarget.type, entityInfo.mergeTarget.id);
+        
+        console.log(`✅ Successfully merged "${entityInfo.originalName}" as alias to "${targetEntity.name}"`);
+        
+        // Refresh knowledge base to show updated data
+        const { loadKnowledgeBase } = await import('./knowledgeBase.js');
+        await loadKnowledgeBase();
+        
+    } catch (error) {
+        console.error('Error merging with selected entity:', error);
+        throw error;
     }
 }
 
@@ -992,22 +1200,7 @@ async function handleMergeWithKBEntity(sourceEntityInfo, targetEntityId, targetE
     }
 }
 
-// Handle approval actions (simplified for reject only)
-async function handleApprovalAction(action, entityInfo) {
-    try {
-        if (action === 'reject') {
-            // Update the CSV table to show this entity as rejected
-            updateEntityInCSVTable(entityInfo.originalName, 'rejected');
-        }
-        
-        // Close the modal
-        closeApprovalModal();
-        
-    } catch (error) {
-        console.error('Error handling approval action:', error);
-        alert(`Error: ${error.message}`);
-    }
-}
+// Removed handleApprovalAction function - reject functionality removed
 
 // Show processing state for entity (immediate feedback)
 function showEntityProcessing(originalName, message) {
@@ -1041,7 +1234,7 @@ function updateEntityInCSVTable(originalName, status) {
             span.className = `entity-${status}`;
             span.title = status === 'approved' ? 'Successfully added to knowledge base ✓' : 
                         status === 'merged' ? 'Successfully merged with existing entry 🔗' : 
-                        'Rejected ✗';
+                        'Processing...';
             
             // Remove click handler for approved/rejected entities
             span.style.cursor = 'default';
@@ -1133,4 +1326,325 @@ export function exportCSVData(data, filename = 'knowledge_base_export.csv') {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// Handle saving individual row as event
+async function handleSaveRowAsEvent(event) {
+    const btn = event.target;
+    const rowIndex = parseInt(btn.dataset.rowIndex);
+    const rowId = btn.dataset.rowId;
+    
+    // Get the current CSV data
+    if (!window.currentCSVData || !window.currentCSVData.data) {
+        console.error('No CSV data available');
+        return;
+    }
+    
+    const row = window.currentCSVData.data[rowIndex];
+    if (!row) {
+        console.error('Row not found:', rowIndex);
+        return;
+    }
+    
+    try {
+        // Disable button and show loading
+        btn.disabled = true;
+        btn.textContent = '⏳ Saving...';
+        
+        // Process row as event with entity linking
+        const eventData = await processCSVRowAsEventWithEntityLinking(row);
+        
+        // Save event
+        const { saveEventToFirebase } = await import('./eventManager.js');
+        await saveEventToFirebase(eventData);
+        
+        // Update button to show success
+        btn.textContent = '✅ Saved';
+        btn.classList.add('success');
+        
+        console.log('✅ Successfully saved row as event:', eventData);
+        
+    } catch (error) {
+        console.error('Error saving row as event:', error);
+        btn.textContent = '❌ Error';
+        btn.classList.add('error');
+    }
+}
+
+// Handle creating connection for individual row
+async function handleCreateRowConnection(event) {
+    const btn = event.target;
+    const rowIndex = parseInt(btn.dataset.rowIndex);
+    const rowId = btn.dataset.rowId;
+    
+    // Get the current CSV data
+    if (!window.currentCSVData || !window.currentCSVData.data) {
+        console.error('No CSV data available');
+        return;
+    }
+    
+    const row = window.currentCSVData.data[rowIndex];
+    if (!row) {
+        console.error('Row not found:', rowIndex);
+        return;
+    }
+    
+    try {
+        // Disable button and show loading
+        btn.disabled = true;
+        btn.textContent = '⏳ Creating...';
+        
+        // Infer and create connection from row
+        const connection = await inferAndCreateConnectionFromRow(row);
+        
+        if (connection) {
+            // Update button to show success
+            btn.textContent = '✅ Connected';
+            btn.classList.add('success');
+            console.log('✅ Successfully created connection:', connection);
+        } else {
+            btn.textContent = '⚠️ No Connection';
+            btn.classList.add('warning');
+            console.log('⚠️ Could not infer connection from row');
+        }
+        
+    } catch (error) {
+        console.error('Error creating connection:', error);
+        btn.textContent = '❌ Error';
+        btn.classList.add('error');
+    }
+}
+
+// Process CSV row as event with entity linking
+async function processCSVRowAsEventWithEntityLinking(row) {
+    const { getKnowledgeBaseData } = await import('./knowledgeBase.js');
+    const { processRelativeDateTime } = await import('./eventManager.js');
+    
+    const kbData = getKnowledgeBaseData();
+    
+    // Find entities in knowledge base for actor, target, and locations
+    const actorEntity = findEntityInKB(row.Actor, kbData);
+    const targetEntity = findEntityInKB(row.Target, kbData);
+    const locationEntities = row.Locations ? 
+        row.Locations.split(',').map(loc => findEntityInKB(loc.trim(), kbData)).filter(Boolean) : 
+        [];
+    
+    // Create event with entity references
+    const event = {
+        // Basic event data
+        actor: row.Actor || '',
+        action: row.Action || '',
+        target: row.Target || '',
+        sentence: row.Sentence || '',
+        dateReceived: row['Date Received'] || '',
+        originalDatetime: row.Datetimes || '',
+        locations: row.Locations ? row.Locations.split(',').map(l => l.trim()) : [],
+        source: 'CSV Import (Individual)',
+        confidence: 'medium',
+        
+        // Entity references
+        actorEntityId: actorEntity?.id || null,
+        actorEntityType: actorEntity?.type || null,
+        targetEntityId: targetEntity?.id || null,
+        targetEntityType: targetEntity?.type || null,
+        locationEntityIds: locationEntities.map(e => e.id),
+        locationEntityTypes: locationEntities.map(e => e.type)
+    };
+    
+    // Process the datetime
+    if (event.originalDatetime && event.dateReceived) {
+        event.resolvedDatetime = processRelativeDateTime(event.originalDatetime, event.dateReceived);
+    }
+    
+    console.log('🔗 Event with entity links:', {
+        actor: event.actor,
+        actorEntity: actorEntity?.name,
+        target: event.target,
+        targetEntity: targetEntity?.name,
+        locations: event.locations,
+        locationEntities: locationEntities.map(e => e.name)
+    });
+    
+    return event;
+}
+
+// Find entity in knowledge base by name or alias
+function findEntityInKB(entityName, kbData) {
+    if (!entityName || !entityName.trim()) return null;
+    
+    const name = entityName.trim().toLowerCase();
+    
+    // Search in all entity types
+    for (const [entityType, entities] of Object.entries(kbData)) {
+        if (!Array.isArray(entities)) continue;
+        
+        for (const entity of entities) {
+            // Check exact name match
+            if (entity.name && entity.name.toLowerCase() === name) {
+                return { ...entity, type: entityType };
+            }
+            
+            // Check aliases
+            if (entity.aliases && Array.isArray(entity.aliases)) {
+                for (const alias of entity.aliases) {
+                    if (alias.toLowerCase() === name) {
+                        return { ...entity, type: entityType };
+                    }
+                }
+            }
+        }
+    }
+    
+    return null;
+}
+
+// Infer and create connection from row
+async function inferAndCreateConnectionFromRow(row) {
+    const { getKnowledgeBaseData } = await import('./knowledgeBase.js');
+    const { saveConnectionToFirebase, getAvailableRelationships } = await import('./eventManager.js');
+    
+    const kbData = getKnowledgeBaseData();
+    
+    // Find entities for actor and target
+    const actorEntity = findEntityInKB(row.Actor, kbData);
+    const targetEntity = findEntityInKB(row.Target, kbData);
+    
+    if (!actorEntity || !targetEntity) {
+        console.log('⚠️ Cannot create connection - missing entities:', {
+            actor: row.Actor,
+            actorFound: !!actorEntity,
+            target: row.Target,
+            targetFound: !!targetEntity
+        });
+        return null;
+    }
+    
+    // Infer relationship based on action
+    const relationship = inferRelationshipFromAction(row.Action, actorEntity.type, targetEntity.type);
+    
+    if (!relationship) {
+        console.log('⚠️ Cannot infer relationship for action:', row.Action);
+        return null;
+    }
+    
+    // Create connection data
+    const connectionData = {
+        fromEntityId: actorEntity.id,
+        fromEntityType: actorEntity.type,
+        toEntityId: targetEntity.id,
+        toEntityType: targetEntity.type,
+        relationshipType: relationship.type,
+        relationshipLabel: relationship.label,
+        reverseRelationshipType: relationship.reverse,
+        reverseRelationshipLabel: relationship.reverseLabel,
+        source: 'CSV Inference (Individual)',
+        confidence: 'medium',
+        sourceData: {
+            sentence: row.Sentence,
+            action: row.Action
+        }
+    };
+    
+    // Save connection to Firebase
+    await saveConnectionToFirebase(connectionData);
+    
+    return connectionData;
+}
+
+// Infer relationship from action and entity types
+function inferRelationshipFromAction(action, fromEntityType, toEntityType) {
+    if (!action) return null;
+    
+    const actionLower = action.toLowerCase().trim();
+    
+    // Define relationship mappings based on action and entity types
+    const relationshipMappings = {
+        // Movement/Location actions
+        'departed': { type: 'departed_from', label: 'departed from', reverse: 'departure_of', reverseLabel: 'departure of' },
+        'arrived': { type: 'arrived_at', label: 'arrived at', reverse: 'arrival_of', reverseLabel: 'arrival of' },
+        'visited': { type: 'visited', label: 'visited', reverse: 'visited_by', reverseLabel: 'visited by' },
+        'traveled': { type: 'traveled_to', label: 'traveled to', reverse: 'traveled_to_by', reverseLabel: 'traveled to by' },
+        'moved': { type: 'moved_to', label: 'moved to', reverse: 'moved_to_by', reverseLabel: 'moved to by' },
+        
+        // Professional actions
+        'taught': { type: 'teacher_of', label: 'teacher of', reverse: 'student_of', reverseLabel: 'student of' },
+        'hired': { type: 'employer_of', label: 'employer of', reverse: 'employee_of', reverseLabel: 'employee of' },
+        'worked': { type: 'worked_for', label: 'worked for', reverse: 'had_employee', reverseLabel: 'had employee' },
+        'coached': { type: 'coach_of', label: 'coach of', reverse: 'coached_by', reverseLabel: 'coached by' },
+        
+        // Sports actions
+        'scored': { type: 'scored_against', label: 'scored against', reverse: 'scored_on_by', reverseLabel: 'scored on by' },
+        'played': { type: 'played_for', label: 'played for', reverse: 'had_player', reverseLabel: 'had player' },
+        'defeated': { type: 'defeated', label: 'defeated', reverse: 'defeated_by', reverseLabel: 'defeated by' },
+        
+        // Social actions
+        'met': { type: 'met_with', label: 'met with', reverse: 'met_with', reverseLabel: 'met with' },
+        'spoke': { type: 'spoke_to', label: 'spoke to', reverse: 'spoke_with', reverseLabel: 'spoke with' },
+        'called': { type: 'called', label: 'called', reverse: 'called_by', reverseLabel: 'called by' }
+    };
+    
+    // Look for exact action matches
+    if (relationshipMappings[actionLower]) {
+        return relationshipMappings[actionLower];
+    }
+    
+    // Look for partial matches
+    for (const [key, relationship] of Object.entries(relationshipMappings)) {
+        if (actionLower.includes(key)) {
+            return relationship;
+        }
+    }
+    
+    // Default generic relationship
+    return {
+        type: 'related_to',
+        label: 'related to',
+        reverse: 'related_to',
+        reverseLabel: 'related to'
+    };
+}
+
+// Process and save CSV rows as events
+export async function saveCSVRowsAsEvents(csvData, statusDiv) {
+    if (!csvData || !csvData.data || csvData.data.length === 0) {
+        throw new Error('No CSV data to process');
+    }
+    
+    const events = [];
+    const errors = [];
+    let processedCount = 0;
+    
+    showStatus('Processing CSV rows as events...', 'info', statusDiv);
+    
+    for (const [index, row] of csvData.data.entries()) {
+        try {
+            // Convert CSV row to event
+            const event = processCSVRowAsEvent(row);
+            
+            // Save event to Firebase
+            await saveEventToFirebase(event);
+            events.push(event);
+            processedCount++;
+            
+            // Update progress
+            if (processedCount % 10 === 0 || processedCount === csvData.data.length) {
+                showStatus(`Processed ${processedCount}/${csvData.data.length} events...`, 'info', statusDiv);
+            }
+            
+        } catch (error) {
+            console.error(`Error processing row ${index + 1} as event:`, error);
+            errors.push({ row: index + 1, error: error.message });
+        }
+    }
+    
+    const successMessage = `Successfully saved ${events.length} events`;
+    const errorMessage = errors.length > 0 ? ` (${errors.length} errors)` : '';
+    
+    showStatus(successMessage + errorMessage, errors.length > 0 ? 'warning' : 'success', statusDiv);
+    
+    return {
+        events,
+        errors,
+        processedCount
+    };
 }

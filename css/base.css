@@ -161,6 +161,50 @@ a:hover {
     display: block;
 }
 
+/* Knowledge Base Entity Tabs */
+.kb-entity-tabs {
+    display: flex;
+    gap: var(--space-1);
+    margin-bottom: var(--space-4);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.kb-tab-button {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.kb-tab-button:hover {
+    color: var(--primary-600);
+    background: var(--gray-50);
+}
+
+.kb-tab-button.active {
+    color: var(--primary-600);
+    border-bottom-color: var(--primary-600);
+    font-weight: var(--font-weight-semibold);
+    background: var(--white);
+}
+
+.kb-tab-content {
+    display: none;
+}
+
+.kb-tab-content.active {
+    display: block;
+}
+
 /* Status Messages */
 .status {
     padding: var(--space-4);

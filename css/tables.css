@@ -394,7 +394,6 @@
 
 /* Knowledge Base Entity Styling */
 .kb-entity-name {
-    color: var(--accent-color);
     font-weight: var(--font-weight-semibold);
     cursor: pointer;
     text-decoration: none;
@@ -490,4 +489,66 @@
     outline: none;
     border-color: var(--accent-color);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Individual row actions */
+.actions-cell {
+    padding: var(--space-2);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.row-actions {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: center;
+}
+
+.row-action-btn {
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    background: var(--white);
+    color: var(--gray-700);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    min-width: 70px;
+}
+
+.row-action-btn:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.row-action-btn:active {
+    transform: translateY(0);
+}
+
+.row-action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.row-action-btn.success {
+    background: var(--green-50);
+    border-color: var(--green-300);
+    color: var(--green-700);
+}
+
+.row-action-btn.error {
+    background: var(--red-50);
+    border-color: var(--red-300);
+    color: var(--red-700);
+}
+
+.row-action-btn.warning {
+    background: var(--yellow-50);
+    border-color: var(--yellow-300);
+    color: var(--yellow-700);
 }
