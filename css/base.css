@@ -37,24 +37,23 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.header-content {
-    max-width: var(--content-max-width);
-    margin: 0 auto;
-    padding: 0 var(--space-6);
-}
 
 .header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-6) 0;
+    padding: var(--space-6);
+    width: 100%;
 }
 
-.header-tabs .section-tabs {
+.header-tabs {
     display: flex;
-    justify-content: left;
+    justify-content: flex-start;
+    align-items: center;
+    border-top: 1px solid var(--gray-200);
+    padding: 0 var(--space-6);
     gap: 0;
-    padding: 0;
+    width: 100%;
 }
 
 .header-tabs .tab-button {
@@ -178,12 +177,12 @@ label {
 }
 
 @media (max-width: 640px) {
-    .header-content {
-        padding: 0 var(--space-4);
+    .header-top {
+        padding: var(--space-4);
     }
     
-    .header-top {
-        padding: var(--space-4) 0;
+    .header-tabs {
+        padding: 0 var(--space-4);
     }
     
     .header-tabs .tab-button {
@@ -202,7 +201,11 @@ label {
 
 @media (max-width: 480px) {
     .header-top {
-        padding: var(--space-3) 0;
+        padding: var(--space-3);
+    }
+    
+    .header-tabs {
+        padding: 0 var(--space-3);
     }
     
     .header-tabs .tab-button {
