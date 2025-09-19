@@ -165,48 +165,48 @@
 
 /* Entity States in CSV Table */
 .duplicate-entity {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 2px solid var(--warning-color);
+    background: var(--duplicate-color);
+    border: 2px solid var(--duplicate-color);
     border-radius: var(--radius-sm);
     font-weight: var(--font-weight-semibold);
-    color: #92400e;
+    color: var(--white);
     padding: 2px 6px;
     margin: 0 2px;
     cursor: pointer;
     display: inline-block;
     position: relative;
-    box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.2);
     transition: all var(--transition-fast);
 }
 
 .duplicate-entity:hover {
-    background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
-    border-color: #d97706;
-    color: #78350f;
-    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+    background: var(--duplicate-hover);
+    border-color: var(--duplicate-hover);
+    color: var(--white);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
     transform: translateY(-1px);
 }
 
 .new-entity {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    border: 2px solid var(--success-border);
+    background: var(--new-entity-color);
+    border: 2px solid var(--new-entity-color);
     border-radius: var(--radius-sm);
     font-weight: var(--font-weight-semibold);
-    color: #065f46;
+    color: var(--white);
     padding: 2px 6px;
     margin: 0 2px;
     position: relative;
     cursor: pointer;
     display: inline-block;
-    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.2);
+    box-shadow: 0 1px 3px rgba(34, 197, 94, 0.2);
     transition: all var(--transition-fast);
 }
 
 .new-entity:hover {
-    background: linear-gradient(135deg, #a7f3d0 0%, #6ee7b7 100%);
-    border-color: #059669;
-    color: #064e3b;
-    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+    background: var(--new-entity-hover);
+    border-color: var(--new-entity-hover);
+    color: var(--white);
+    box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3);
     transform: translateY(-1px);
 }
 
@@ -216,7 +216,7 @@
     top: -8px;
     right: -6px;
     font-size: var(--font-size-xs);
-    background: #10b981;
+    background: var(--new-entity-hover);
     color: white;
     border-radius: var(--radius-full);
     width: var(--size-16);
@@ -233,11 +233,11 @@
 }
 
 .entity-approved {
-    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    background: var(--approved-color);
     border: 2px solid var(--approved-color);
     border-radius: var(--radius-sm);
     font-weight: var(--font-weight-bold);
-    color: #14532d;
+    color: var(--white);
     padding: 2px 6px;
     margin: 0 2px;
     display: inline-block;
@@ -253,7 +253,7 @@
     top: -8px;
     right: -6px;
     font-size: var(--font-size-xs);
-    background: #16a34a;
+    background: var(--success-text);
     color: white;
     border-radius: var(--radius-full);
     width: var(--size-16);
@@ -266,11 +266,11 @@
 }
 
 .entity-merged {
-    background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
+    background: var(--info-color);
     border: 2px solid var(--info-color);
     border-radius: var(--radius-sm);
     font-weight: var(--font-weight-bold);
-    color: #01579b;
+    color: var(--white);
     padding: 2px 6px;
     margin: 0 2px;
     display: inline-block;
@@ -286,7 +286,7 @@
     top: -8px;
     right: -6px;
     font-size: var(--font-size-xs);
-    background: #0288d1;
+    background: var(--merged-color);
     color: white;
     border-radius: var(--radius-full);
     width: var(--size-16);
@@ -299,16 +299,18 @@
 }
 
 .entity-rejected {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    border: 2px solid #ef4444;
+    background: var(--error-button);
+    border: 2px solid var(--error-border);
     border-radius: var(--radius-sm);
     font-weight: var(--font-weight-semibold);
-    color: #991b1b;
+    color: var(--white);
     padding: 2px 6px;
     margin: 0 2px;
     display: inline-block;
     cursor: default;
 }
+
+
 
 /* Entity Animations */
 @keyframes approveSuccess {

@@ -10,181 +10,88 @@ export function generateDynamicFields(entityType, dynamicFields) {
     }
     
     const fields = entityFields[entityType];
-    const fieldGroups = organizeFieldsIntoGroups(fields);
     
-    fieldGroups.forEach(group => {
-        const groupDiv = document.createElement('div');
-        groupDiv.className = group.className;
-        
-        if (group.title) {
-            const titleDiv = document.createElement('div');
-            titleDiv.className = 'field-group-title';
-            titleDiv.textContent = group.title;
-            groupDiv.appendChild(titleDiv);
-        }
-        
-        const fieldsContainer = document.createElement('div');
-        fieldsContainer.className = 'field-group-container';
-        
-        group.fields.forEach(field => {
-            const fieldDiv = document.createElement('div');
-            fieldDiv.className = getCompactFieldClassName(field);
-            
-            const label = document.createElement('label');
-            label.className = 'form-label';
-            label.textContent = formatFieldName(field.name);
-            
-            // Set the 'for' attribute based on field type
-            if (field.type === 'array') {
-                // For array fields, don't set 'for' attribute since there are multiple inputs
-                // The label will be associated with the container semantically
-            } else {
-                label.setAttribute('for', field.name);
-            }
-            
-            if (field.required) {
-                label.classList.add('required');
-            }
-            
-            let input = createCompactFieldInput(field);
-            
-            fieldDiv.appendChild(label);
-            fieldDiv.appendChild(input);
-            
-            // Add help text for certain fields
-            if (field.name === 'wikidata_id') {
-                const helpText = document.createElement('div');
-                helpText.className = 'help-text';
-                helpText.textContent = 'Enter Wikidata ID (e.g., Q62) to auto-fill fields';
-                fieldDiv.appendChild(helpText);
-                
-                // Add autofill functionality
-                input.addEventListener('blur', handleWikidataAutofill);
-            }
-            
-            // Add event listener for category changes to toggle sports fields
-            if (field.name === 'category') {
-                input.addEventListener('change', function() {
-                    toggleSportsFields(this.value);
-                });
-            }
-            
-            fieldsContainer.appendChild(fieldDiv);
-        });
-        
-        groupDiv.appendChild(fieldsContainer);
-        dynamicFields.appendChild(groupDiv);
-    });
-}
-
-// Organize fields into logical groups with compact grid layouts
-function organizeFieldsIntoGroups(fields) {
-    const groups = [];
+    // Create a simple form container
+    const formContainer = document.createElement('div');
+    formContainer.className = 'form-container';
     
-    // Group fields by their 'group' property
-    const fieldsByGroup = {};
+    // Add special wikidata section if wikidata_id field exists
+    const wikidataField = fields.find(f => f.name === 'wikidata_id');
+    if (wikidataField) {
+        const wikidataSection = document.createElement('div');
+        wikidataSection.className = 'wikidata-section';
+        
+        const fieldDiv = document.createElement('div');
+        fieldDiv.className = getCompactFieldClassName(wikidataField);
+        
+        const label = document.createElement('label');
+        label.className = 'form-label';
+        label.textContent = formatFieldName(wikidataField.name);
+        label.setAttribute('for', wikidataField.name);
+        
+        const input = createCompactFieldInput(wikidataField);
+        
+        fieldDiv.appendChild(label);
+        fieldDiv.appendChild(input);
+        
+        const helpText = document.createElement('div');
+        helpText.className = 'help-text';
+        helpText.textContent = 'Enter Wikidata ID (e.g., Q62) to auto-fill fields';
+        fieldDiv.appendChild(helpText);
+        
+        // Add autofill functionality
+        input.addEventListener('blur', handleWikidataAutofill);
+        
+        wikidataSection.appendChild(fieldDiv);
+        dynamicFields.appendChild(wikidataSection);
+    }
     
+    // Add all other fields to the form container
     fields.forEach(field => {
-        const groupName = field.group || 'other';
-        if (!fieldsByGroup[groupName]) {
-            fieldsByGroup[groupName] = [];
+        if (field.name === 'wikidata_id') return; // Skip, already added above
+        
+        const fieldDiv = document.createElement('div');
+        fieldDiv.className = getCompactFieldClassName(field);
+        
+        // Add special class for sports fields
+        if (field.group === 'sports') {
+            fieldDiv.classList.add('sports-field', 'hidden');
         }
-        fieldsByGroup[groupName].push(field);
-    });
-    
-    // Define the order of groups with compact layouts
-    const groupOrder = ['basic', 'personal', 'professional', 'education', 'location', 'classification', 'geographic', 'demographics', 'details', 'sports', 'legacy', 'other'];
-    
-    // Create groups with intelligent grid layouts
-    groupOrder.forEach(groupName => {
-        if (fieldsByGroup[groupName] && fieldsByGroup[groupName].length > 0) {
-            const groupFields = fieldsByGroup[groupName];
-            const gridLayout = determineOptimalGridLayout(groupFields);
-            
-            // Add conditional visibility for sports fields
-            let className = `field-group ${groupName}-group ${gridLayout}`;
-            if (groupName === 'sports') {
-                className += ' sports-fields-group';
-                // Initially hide sports fields
-                className += ' hidden';
-            }
-            
-            groups.push({
-                className: className,
-                title: null, // Remove group titles for more compact layout
-                fields: groupFields
+        
+        const label = document.createElement('label');
+        label.className = 'form-label';
+        label.textContent = formatFieldName(field.name);
+        
+        // Set the 'for' attribute based on field type
+        if (field.type !== 'array') {
+            label.setAttribute('for', field.name);
+        }
+        
+        if (field.required) {
+            label.classList.add('required');
+        }
+        
+        const input = createCompactFieldInput(field);
+        
+        fieldDiv.appendChild(label);
+        fieldDiv.appendChild(input);
+        
+        // Add event listener for category changes to toggle sports fields
+        if (field.name === 'category') {
+            input.addEventListener('change', function() {
+                toggleSportsFields(this.value);
             });
         }
+        
+        formContainer.appendChild(fieldDiv);
     });
     
-    return groups;
+    dynamicFields.appendChild(formContainer);
 }
 
-// Determine optimal grid layout based on field types and count
-function determineOptimalGridLayout(fields) {
-    const shortFields = fields.filter(f => 
-        f.type !== 'textarea' && 
-        f.name !== 'description' && 
-        f.type !== 'array'
-    );
-    
-    const longFields = fields.filter(f => 
-        f.type === 'textarea' || 
-        f.name === 'description' || 
-        f.type === 'array'
-    );
-    
-    // If mostly short fields, use grid layout
-    if (shortFields.length >= 2 && longFields.length === 0) {
-        if (shortFields.length === 2) return 'form-grid-2';
-        if (shortFields.length === 3) return 'form-grid-3';
-        if (shortFields.length >= 4) return 'form-grid-2'; // Use 2-column for many fields
-    }
-    
-    // Mixed or mostly long fields use default single column
-    return '';
-}
 
-// Format group names for display
-function formatGroupName(groupName) {
-    const groupTitles = {
-        'basic': 'Basic Information',
-        'personal': 'Personal Details',
-        'professional': 'Professional Information',
-        'education': 'Education',
-        'location': 'Location',
-        'classification': 'Classification',
-        'geographic': 'Geographic Information',
-        'demographics': 'Demographics & History',
-        'details': 'Organization Details',
-        'legacy': 'Legacy Fields',
-        'other': 'Additional Information'
-    };
-    
-    return groupTitles[groupName] || groupName.charAt(0).toUpperCase() + groupName.slice(1);
-}
 
-// Get appropriate CSS class for field based on type and layout (legacy)
-function getFieldClassName(field) {
-    const baseClass = 'form-field';
-    
-    // Full width fields (take entire row)
-    if (field.type === 'textarea') {
-        return `${baseClass} full-width`;
-    }
-    
-    if (field.type === 'array') {
-        return `${baseClass} full-width`;
-    }
-    
-    if (field.name === 'description') {
-        return `${baseClass} full-width`;
-    }
-    
-    // Regular width fields (fit multiple per row)
-    // Most fields can now fit 2-3 per row with the smaller minmax
-    return `${baseClass}`;
-}
+
 
 // Get compact CSS class for modal fields
 function getCompactFieldClassName(field) {
@@ -543,14 +450,15 @@ function showAutofillFeedback(inputElement, type, message) {
 
 // Toggle sports fields visibility based on category selection
 function toggleSportsFields(category) {
-    const sportsFieldsGroup = document.querySelector('.sports-fields-group');
-    if (sportsFieldsGroup) {
-        if (category === 'sports team') {
-            sportsFieldsGroup.classList.remove('hidden');
-            console.log('🏈 Showing sports fields');
-        } else {
-            sportsFieldsGroup.classList.add('hidden');
-            console.log('🏢 Hiding sports fields');
-        }
+    const sportsFields = document.querySelectorAll('.sports-field');
+    if (sportsFields.length > 0) {
+        sportsFields.forEach(field => {
+            if (category === 'sports team') {
+                field.classList.remove('hidden');
+            } else {
+                field.classList.add('hidden');
+            }
+        });
+        console.log(category === 'sports team' ? '🏈 Showing sports fields' : '🏢 Hiding sports fields');
     }
 }

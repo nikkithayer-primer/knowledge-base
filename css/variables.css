@@ -39,6 +39,14 @@
     --approved-color: #16a34a;
     --merged-color: #0288d1;
     
+    /* Entity State Colors */
+    --duplicate-color: #3b82f6;
+    --duplicate-hover: #2563eb;
+    --duplicate-text: #1e40af;
+    --new-entity-color: #22c55e;
+    --new-entity-hover: #16a34a;
+    --new-entity-text: #15803d;
+    
     /* Typography */
     --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     --font-size-xs: 10px;

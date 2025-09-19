@@ -16,6 +16,9 @@ let filteredData = {
     organizations: []
 };
 
+// Flag to track if connection form listeners have been set up
+let connectionFormListenersSetup = false;
+
 // Export knowledge base data for duplicate checking
 export function getKnowledgeBaseData() {
     return knowledgeBaseData;

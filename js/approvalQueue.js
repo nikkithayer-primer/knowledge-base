@@ -40,6 +40,24 @@ export function initializeApprovalQueue(enrichedData) {
         });
     });
     
+    // Add notFound entities for manual review - these should also be available for knowledge base
+    if (enrichedData.notFound) {
+        enrichedData.notFound.forEach((notFoundEntity, index) => {
+            approvalQueue.push({
+                id: `notfound_${index}`,
+                entity: null,
+                entityType: 'unknown',
+                status: 'pending',
+                originalName: notFoundEntity.originalName,
+                wikidataInfo: {
+                    originalName: notFoundEntity.originalName,
+                    reason: notFoundEntity.reason || 'Not found in Wikidata',
+                    found: false
+                }
+            });
+        });
+    }
+    
     approvalStats.pending = approvalQueue.length;
     
     console.log(`📋 Approval queue initialized with ${approvalQueue.length} entities`);

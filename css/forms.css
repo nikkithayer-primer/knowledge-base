@@ -111,95 +111,26 @@ select {
     border-radius: 1px;
 }
 
-/* Field Groups */
-.field-group {
-    margin-bottom: var(--space-6);
-    background: var(--white);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.field-group-title {
-    background: var(--gray-100);
-    padding: var(--space-3) var(--space-4);
-    font-weight: var(--font-weight-semibold);
-    font-size: var(--font-size-sm);
-    color: var(--gray-800);
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-    border-bottom: 1px solid var(--gray-200);
-}
-
-.field-group-container {
-    padding: var(--space-4);
+/* Simplified Form Layout */
+.form-container {
     display: grid;
     gap: var(--space-4);
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
-/* Modal Field Group Overrides */
-.modal-content .field-group.basic .field-group-container {
+/* Modal Form Layout */
+.modal-content .form-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: var(--space-3);
 }
 
-.modal-content .field-group.identification .field-group-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: var(--space-3);
-}
-
-.modal-content .field-group.personal .field-group-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-3);
-}
-
-.modal-content .field-group.professional .field-group-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-3);
-}
-
-.modal-content .field-group.location .field-group-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: var(--space-3);
-}
-
-.modal-content .field-group.classification .field-group-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-3);
-}
-
-.modal-content .field-group.business .field-group-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-3);
-}
-
-.modal-content .field-group.sports .field-group-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: var(--space-3);
-}
-
-.modal-content .field-group-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-}
-
-.modal-content .field-group-container .form-field {
-    flex: 1;
+.modal-content .form-field {
     min-width: 150px;
 }
 
-.modal-content .field-group-container .form-field.full-width {
-    flex: 100%;
+.modal-content .form-field.full-width {
+    grid-column: 1 / -1;
     width: 100%;
 }
 
@@ -243,14 +174,18 @@ select {
     padding: 4px 6px;
 }
 
-/* Wikidata Group Special Styling */
-.wikidata-group {
-    border-color: var(--accent-color);
+/* Wikidata Section Special Styling */
+.wikidata-section {
+    border: 1px solid var(--accent-color);
+    border-radius: var(--radius-sm);
     background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
 }
 
-.wikidata-group .field-group-container {
-    padding: var(--space-5);
+/* Sports Fields Visibility */
+.sports-field.hidden {
+    display: none;
 }
 
 /* Compact Form Field Styling */

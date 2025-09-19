@@ -474,7 +474,8 @@ async function processCSVFile(file) {
                     ...filteredData.people.map(entity => ({ entity, entityType: 'person', originalName: getOriginalEntityName({ entity }) })),
                     ...filteredData.places.map(entity => ({ entity, entityType: 'place', originalName: getOriginalEntityName({ entity }) })),
                     ...filteredData.organizations.map(entity => ({ entity, entityType: 'organization', originalName: getOriginalEntityName({ entity }) })),
-                    ...enrichedData.unknown.map(entity => ({ entity: null, entityType: 'unknown', originalName: entity.originalName }))
+                    ...enrichedData.unknown.map(entity => ({ entity: null, entityType: 'unknown', originalName: entity.originalName })),
+                    ...(enrichedData.notFound || []).map(entity => ({ entity: null, entityType: 'unknown', originalName: entity.originalName }))
                 ];
                 
                 // Update CSV table to show both duplicates and new entities inline
@@ -482,14 +483,18 @@ async function processCSVFile(file) {
                 
                 // Update status with enrichment results
                 const totalFound = enrichedData.people.length + enrichedData.places.length + enrichedData.organizations.length;
+                const totalUnknown = enrichedData.unknown.length;
+                const totalNotFound = (enrichedData.notFound || []).length;
                 const newEntitiesCount = newEntitiesList.length;
                 const duplicateCount = duplicates.length;
                 
-                let statusMessage = `✅ CSV loaded with ${result.totalRows} rows. Found ${totalFound} entities.`;
+                let statusMessage = `✅ CSV loaded with ${result.totalRows} rows. Found ${totalFound} entities in Wikidata`;
+                if (totalUnknown > 0 || totalNotFound > 0) {
+                    statusMessage += `, ${totalUnknown + totalNotFound} entities need manual review`;
+                }
+                statusMessage += `.`;
                 if (duplicateCount > 0 || newEntitiesCount > 0) {
                     statusMessage += ` ${duplicateCount} duplicates found, ${newEntitiesCount} new entities ready for review.`;
-                } else {
-                    statusMessage += ` All entities processed.`;
                 }
                 showStatus(statusMessage, 'success', csvStatus);
                 
