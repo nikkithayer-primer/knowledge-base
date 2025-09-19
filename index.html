@@ -55,10 +55,6 @@
                     
                     <!-- Data Display Area -->
                     <div id="csvDataDisplay" style="display: none;">
-                        <div class="csv-data-header">
-                            <h3>📊 Uploaded Data</h3>
-                            <button type="button" id="clearCsvBtn" class="clear-csv-btn">🗑️ Clear Data</button>
-                        </div>
                         <div id="csvTableContainer" class="csv-table-container"></div>
                     </div>
                     
@@ -143,8 +139,6 @@
                     
                     <div class="button-group">
                         <button type="submit" id="submitBtn">Save Entry</button>
-                        <button type="button" id="loadBtn">Load Data</button>
-                        <button type="reset" id="resetBtn">Reset Form</button>
                     </div>
                 </form>
                 
@@ -153,63 +147,6 @@
         </div>
     </div>
 
-    <!-- Connections Modal -->
-    <div id="connectionsModal" class="modal-overlay">
-        <div class="modal-container connections-modal">
-            <div class="modal-header">
-                <h2 id="connectionsModalTitle">Manage Connections</h2>
-                <button type="button" id="closeConnectionsModalBtn" class="close-modal-btn">&times;</button>
-            </div>
-            
-            <div class="modal-content">
-                <div class="connections-content">
-                    <!-- Current connections list -->
-                    <div class="current-connections">
-                        <h3>Current Connections</h3>
-                        <div id="currentConnectionsList" class="connections-list">
-                            <!-- Connections will be populated here -->
-                        </div>
-                    </div>
-                    
-                    <!-- Add new connection form -->
-                    <div class="add-connection">
-                        <h3>Add New Connection</h3>
-                        <form id="addConnectionForm">
-                            <div class="connection-form-grid">
-                                <div class="form-group">
-                                    <label for="targetEntityType" class="form-label">Target Entity Type</label>
-                                    <select id="targetEntityType" class="form-select">
-                                        <option value="">Select type...</option>
-                                        <option value="people">Person</option>
-                                        <option value="places">Place</option>
-                                        <option value="organizations">Organization</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="targetEntity" class="form-label">Target Entity</label>
-                                    <select id="targetEntity" class="form-select" disabled>
-                                        <option value="">Select entity...</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="relationshipType" class="form-label">Relationship</label>
-                                    <select id="relationshipType" class="form-select" disabled>
-                                        <option value="">Select relationship...</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="connection-actions">
-                                <button type="submit" id="addConnectionBtn" class="add-connection-btn" disabled>Add Connection</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Firebase SDK -->
     <script type="module" src="js/main.js"></script>

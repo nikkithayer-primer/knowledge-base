@@ -2,7 +2,6 @@
 import { loadEntitiesFromFirebase, deleteEntityFromFirebase, deleteMultipleEntitiesFromFirebase } from './firebaseOperations.js';
 import { escapeHtml } from './dataProcessor.js';
 import { getFirebaseCollectionName } from './collectionMapping.js';
-import { getAvailableRelationships, addConnection, getEntityConnections, deleteConnection, loadConnectionsFromFirebase } from './connections.js';
 
 // Global knowledge base state
 let knowledgeBaseData = {
@@ -45,18 +44,16 @@ export async function loadKnowledgeBase() {
             organizations: organizationsCollection
         });
         
-        const [people, places, organizations, connections] = await Promise.all([
+        const [people, places, organizations] = await Promise.all([
             loadEntitiesFromFirebase(peopleCollection, 100),
             loadEntitiesFromFirebase(placesCollection, 100),
-            loadEntitiesFromFirebase(organizationsCollection, 100),
-            loadConnectionsFromFirebase()
+            loadEntitiesFromFirebase(organizationsCollection, 100)
         ]);
         
         console.log('📊 Knowledge Base loaded:', {
             people: people.length,
             places: places.length, 
             organizations: organizations.length,
-            connections: connections.length,
             peopleData: people.map(p => ({ id: p.id, name: p.name })),
             placesData: places.map(p => ({ id: p.id, name: p.name })),
             organizationsData: organizations.map(o => ({ id: o.id, name: o.name }))
@@ -128,17 +125,10 @@ function createEntityTable(entities, entityType) {
         
         columns.forEach(col => {
             if (col.key === 'actions') {
-                // Actions column with connection management
+                // Actions column
                 tableHTML += `
                     <td class="kb-td-actions">
                         <div class="kb-action-buttons">
-                            <button type="button" class="kb-connections-btn" 
-                                    data-entity-type="${entityType}" 
-                                    data-entity-id="${entity.id}" 
-                                    data-entity-name="${escapeHtml(entity.name || 'Unnamed')}" 
-                                    title="Manage connections">
-                                🔗
-                            </button>
                             <button type="button" class="kb-delete-btn-table" 
                                     data-entity-type="${entityType}" 
                                     data-entity-id="${entity.id}" 
@@ -188,17 +178,6 @@ function createEntityTable(entities, entityType) {
                 const entityId = btn.dataset.entityId;
                 const entityName = btn.dataset.entityName;
                 handleDeleteEntity(entityType, entityId, entityName);
-            });
-        });
-        
-        const connectionButtons = document.querySelectorAll('.kb-connections-btn');
-        connectionButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const entityType = btn.dataset.entityType;
-                const entityId = btn.dataset.entityId;
-                const entityName = btn.dataset.entityName;
-                openConnectionsModal(entityType, entityId, entityName);
             });
         });
         
@@ -807,91 +786,8 @@ function showErrorDialog(title, message) {
     setTimeout(() => okBtn.focus(), 100);
 }
 
-// Connections modal management
-let currentConnectionEntity = null;
 
-export function openConnectionsModal(entityType, entityId, entityName) {
-    currentConnectionEntity = { entityType, entityId, entityName };
-    
-    const modal = document.getElementById('connectionsModal');
-    const title = document.getElementById('connectionsModalTitle');
-    
-    if (modal && title) {
-        title.textContent = `Manage Connections - ${entityName}`;
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-        
-        // Load current connections
-        loadCurrentConnections(entityId, entityType);
-        
-        console.log('🔗 Opened connections modal for:', entityName);
-    }
-}
 
-function closeConnectionsModal() {
-    const modal = document.getElementById('connectionsModal');
-    if (modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-        resetConnectionForm();
-    }
-}
-
-function loadCurrentConnections(entityId, entityType) {
-    const connectionsList = document.getElementById('currentConnectionsList');
-    if (!connectionsList) return;
-    
-    const connections = getEntityConnections(entityId, entityType);
-    
-    if (connections.length === 0) {
-        connectionsList.innerHTML = '<div class="no-connections">No connections found</div>';
-        return;
-    }
-    
-    let connectionsHTML = '';
-    connections.forEach(connection => {
-        const isOutgoing = connection.fromEntityId === entityId;
-        const targetId = isOutgoing ? connection.toEntityId : connection.fromEntityId;
-        const targetType = isOutgoing ? connection.toEntityType : connection.fromEntityType;
-        const relationshipLabel = getRelationshipLabel(connection.relationshipType, connection.fromEntityType, connection.toEntityType);
-        
-        // Get target entity name (placeholder for now)
-        const targetEntity = findEntityById(targetId, targetType);
-        const targetName = targetEntity?.name || 'Unknown Entity';
-        
-        connectionsHTML += `
-            <div class="connection-item" data-connection-id="${connection.id}">
-                <div class="connection-info">
-                    <span class="connection-relationship">${relationshipLabel}</span>
-                    <span class="connection-target">${targetName}</span>
-                    <span class="connection-type">(${targetType})</span>
-                </div>
-                <button type="button" class="delete-connection-btn" data-connection-id="${connection.id}" title="Delete connection">
-                    🗑️
-                </button>
-            </div>
-        `;
-    });
-    
-    connectionsList.innerHTML = connectionsHTML;
-    
-    // Add delete event listeners
-    connectionsList.querySelectorAll('.delete-connection-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const connectionId = e.target.dataset.connectionId;
-            try {
-                await deleteConnection(connectionId);
-                loadCurrentConnections(entityId, entityType); // Refresh list
-                console.log('✅ Connection deleted');
-            } catch (error) {
-                console.error('❌ Error deleting connection:', error);
-            }
-        });
-    });
-}
-
-// Track if listeners have been set up to avoid duplicates
-let connectionFormListenersSetup = false;
 
 function setupConnectionFormListeners() {
     // Only setup listeners once

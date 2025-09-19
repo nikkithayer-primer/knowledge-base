@@ -5,6 +5,7 @@ import {
     getDocs, 
     deleteDoc,
     doc,
+    updateDoc,
     writeBatch,
     orderBy, 
     query, 
@@ -141,6 +142,35 @@ export async function deleteMultipleEntitiesFromFirebase(deletions) {
         
     } catch (error) {
         console.error('Error batch deleting entities:', error);
+        throw error;
+    }
+}
+
+// Update existing entity in Firebase
+export async function updateEntityInFirebase(entityData, entityType, entityId) {
+    if (!db) {
+        throw new Error('Firebase is not initialized. Please check your configuration.');
+    }
+    
+    console.log(`🔄 Updating ${entityType} entity with ID: ${entityId}`);
+    
+    try {
+        // Add update metadata
+        const updatedData = {
+            ...entityData,
+            lastModified: new Date().toISOString(),
+            modifiedAt: serverTimestamp()
+        };
+        
+        // Update document in Firestore
+        const docRef = doc(db, entityType, entityId);
+        await updateDoc(docRef, updatedData);
+        
+        console.log(`✅ Successfully updated entity in Firebase`);
+        return docRef;
+        
+    } catch (error) {
+        console.error(`Error updating ${entityType} entity:`, error);
         throw error;
     }
 }

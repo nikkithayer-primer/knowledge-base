@@ -1,4 +1,6 @@
-/* Button styles */
+/* Button styles - All button components and variants */
+
+/* Base Button Styles */
 button {
     background: var(--primary-color);
     color: var(--white);
@@ -36,7 +38,7 @@ button:disabled {
     border-color: var(--gray-400);
 }
 
-/* Button Actions Container */
+/* Button Groups */
 .button-group {
     display: flex;
     gap: var(--space-3);
@@ -46,7 +48,30 @@ button:disabled {
     border-top: 1px solid var(--gray-200);
 }
 
-/* Button Variants */
+/* Header Buttons */
+.create-entry-btn {
+    background: var(--primary-color);
+    color: var(--white);
+    border: 2px solid var(--primary-color);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0;
+}
+
+.create-entry-btn:hover:not(:disabled) {
+    background: var(--white);
+    color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Action Buttons */
 .add-btn {
     background: var(--success-button);
     color: var(--white);
@@ -89,4 +114,254 @@ button:disabled {
 .remove-btn:hover:not(:disabled) {
     background: var(--error-text);
     border-color: var(--error-text);
+}
+
+/* CSV Action Buttons */
+.clear-csv-btn {
+    background: var(--error-button);
+    color: var(--white);
+    border: 2px solid var(--error-button);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin: 0;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.clear-csv-btn:hover:not(:disabled) {
+    background: var(--white);
+    color: var(--error-button);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+}
+
+/* Approval Buttons */
+.approve-all-btn, .reject-all-btn {
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 2px solid;
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0 var(--space-2) 0 0;
+}
+
+.approve-all-btn {
+    background: var(--success-button);
+    color: var(--white);
+    border-color: var(--success-button);
+}
+
+.approve-all-btn:hover:not(:disabled) {
+    background: var(--success-text);
+    border-color: var(--success-text);
+}
+
+.reject-all-btn {
+    background: var(--error-button);
+    color: var(--white);
+    border-color: var(--error-button);
+}
+
+.reject-all-btn:hover:not(:disabled) {
+    background: var(--error-text);
+    border-color: var(--error-text);
+}
+
+/* Approval Modal Buttons */
+.approve-btn, .reject-btn, .map-btn {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 2px solid;
+    text-transform: none;
+    letter-spacing: normal;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.approve-btn {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    color: var(--white);
+    border-color: #15803d;
+}
+
+.approve-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    border-color: #166534;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
+.reject-btn {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: var(--white);
+    border-color: #b91c1c;
+}
+
+.reject-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    border-color: #991b1b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.map-btn {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: var(--white);
+    border-color: #d97706;
+}
+
+.map-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    border-color: #b45309;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.merge-btn {
+    background: linear-gradient(135deg, #0288d1 0%, #0277bd 100%);
+    color: var(--white);
+    border: 2px solid #0277bd;
+    border-radius: var(--radius-sm);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.merge-btn:hover {
+    background: linear-gradient(135deg, #0277bd 0%, #01579b 100%);
+    border-color: #01579b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(2, 136, 209, 0.3);
+}
+
+/* Knowledge Base Buttons */
+.refresh-btn {
+    background: var(--primary-color);
+    color: var(--white);
+    border: 2px solid var(--primary-color);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-left: var(--space-2);
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background: var(--white);
+    color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.kb-delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--error-button);
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--size-32);
+    height: var(--size-32);
+    margin: 0;
+}
+
+.kb-delete-btn:hover {
+    background: var(--error-bg);
+    color: var(--error-text);
+    transform: scale(1.1);
+}
+
+/* Merge Modal Buttons */
+.select-merge-btn {
+    background: var(--primary-600);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0;
+}
+
+.select-merge-btn:hover {
+    background: var(--primary-700);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.cancel-merge-btn {
+    background: var(--gray-200);
+    color: var(--gray-700);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0;
+}
+
+.cancel-merge-btn:hover {
+    background: var(--gray-300);
+}
+
+/* Close Buttons */
+.close-modal-btn {
+    background: transparent;
+    border: none;
+    color: var(--gray-500);
+    font-size: var(--font-size-xl);
+    cursor: pointer;
+    padding: var(--space-1);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--size-32);
+    height: var(--size-32);
+    margin: 0;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.close-modal-btn:hover {
+    background: var(--gray-100);
+    color: var(--gray-700);
 }

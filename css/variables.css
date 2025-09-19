@@ -3,6 +3,9 @@
     /* Minimalist Color Palette */
     --primary-color: #000000;
     --primary-hover: #f5f5f5;
+    --primary-500: #3b82f6;
+    --primary-600: #2563eb;
+    --primary-700: #1d4ed8;
     --accent-color: #0066cc;
     --accent-hover: #0052a3;
     
@@ -30,10 +33,18 @@
     --error-border: #ef4444;
     --error-button: #dc2626;
     
+    /* Additional Status Colors */
+    --warning-color: #f59e0b;
+    --info-color: #0288d1;
+    --approved-color: #16a34a;
+    --merged-color: #0288d1;
+    
     /* Typography */
     --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-    --font-size-sm: 14px;
-    --font-size-base: 16px;
+    --font-size-xs: 10px;
+    --font-size-sm: 12px;
+    --font-size-base: 14px;
+    --font-size-md: 16px;
     --font-size-lg: 18px;
     --font-size-xl: 24px;
     --font-size-2xl: 32px;
@@ -45,6 +56,7 @@
     --font-weight-bold: 700;
     
     /* Spacing */
+    --space-0: 0;
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;
@@ -55,12 +67,15 @@
     --space-10: 40px;
     --space-12: 48px;
     --space-16: 64px;
+    --space-20: 80px;
     
     /* Border Radius */
+    --radius-xs: 2px;
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 12px;
     --radius-xl: 15px;
+    --radius-full: 50%;
     
     /* Shadows */
     --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
@@ -71,11 +86,56 @@
     --transition-fast: 0.2s ease;
     --transition-normal: 0.3s ease;
     
+    /* Opacity */
+    --opacity-70: 0.7;
+    --opacity-80: 0.8;
+    --opacity-100: 1;
+    
+    /* Line Heights */
+    --line-height-normal: 1.4;
+    --line-height-relaxed: 1.5;
+    
     /* Layout */
     --container-max-width: none;
     --content-max-width: 100%;
     --input-height: 44px;
     --button-height: 44px;
+    
+    /* Common Sizes */
+    --size-full: 100%;
+    --size-screen: 100vh;
+    --size-screen-70: 70vh;
+    --size-16: 16px;
+    --size-32: 32px;
+    --size-100: 100px;
+    --size-120: 120px;
+    --size-150: 150px;
+    --size-200: 200px;
+    --size-300: 300px;
+    --size-400: 400px;
+    --size-500: 500px;
+    --size-600: 600px;
+    --size-640: 640px;
+    --size-700: 700px;
+    
+    /* Percentages */
+    --width-15: 15%;
+    --width-20: 20%;
+    --width-30: 30%;
+    --width-50: 50%;
+    --width-70: 70%;
+    --width-80: 80%;
+    --width-90: 90%;
+    --width-95: 95%;
+    
+    /* Z-Index Scale */
+    --z-base: 1;
+    --z-dropdown: 10;
+    --z-sticky: 100;
+    --z-modal: 1000;
+    --z-popover: 2000;
+    --z-tooltip: 3000;
+    --z-overlay: 9999;
     
     /* Grid */
     --grid-gap: 24px;

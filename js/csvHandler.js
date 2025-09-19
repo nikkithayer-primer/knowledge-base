@@ -512,78 +512,111 @@ function createApprovalModal(entityInfo) {
     
     const entity = entityInfo.entity;
     const originalName = entityInfo.originalName;
+    const entityType = entityInfo.entityType;
     
-    let modalContent = '';
-    
-    if (entity) {
-        // Entity was found in Wikidata
-        modalContent = `
-            <div class="modal-container approval-modal-container">
-                <div class="modal-header">
-                    <h2>Review Entity</h2>
-                    <button type="button" class="close-modal-btn approval-close">&times;</button>
+    modal.innerHTML = `
+        <div class="modal-container approval-modal-container">
+            <div class="modal-header">
+                <h2>Review Entity: "${escapeHtml(originalName)}"</h2>
+                <button type="button" class="close-modal-btn approval-close">&times;</button>
+            </div>
+            
+            <div class="modal-content">
+                <!-- Entity Type Selection -->
+                <div class="modal-section modal-section-gray">
+                    <label class="form-label">Entity Type:</label>
+                    <select class="entity-type-select" data-original-type="${entityType}">
+                        <option value="person" ${entityType === 'person' ? 'selected' : ''}>Person</option>
+                        <option value="place" ${entityType === 'place' ? 'selected' : ''}>Place</option>
+                        <option value="organization" ${entityType === 'organization' ? 'selected' : ''}>Organization</option>
+                        <option value="unknown" ${entityType === 'unknown' ? 'selected' : ''}>Unknown</option>
+                    </select>
                 </div>
-                
-                <div class="modal-content">
-                    <div class="approval-entity-info">
-                        <div class="entity-type-badge ${entity.type}">${entity.type}</div>
-                        <h3 class="entity-name">${escapeHtml(entity.name)}</h3>
-                        <div class="original-name">Originally: "${escapeHtml(originalName)}"</div>
-                        
-                        ${entity.wikidata_id ? `<div class="wikidata-id">Wikidata ID: ${entity.wikidata_id}</div>` : ''}
-                        ${entity.description ? `<div class="entity-description">${escapeHtml(entity.description)}</div>` : ''}
+
+                <!-- Wikidata Override Section -->
+                <div class="modal-section modal-section-gray">
+                    <label class="form-label">Wikidata ID Override:</label>
+                    <div class="wikidata-input-group">
+                        <input type="text" class="wikidata-override-input" placeholder="Enter Wikidata ID (e.g., Q123456)" 
+                               value="${entity?.wikidata_id || ''}">
+                        <button type="button" class="wikidata-lookup-btn">Look Up</button>
+                        <button type="button" class="wikidata-clear-btn">Clear</button>
                     </div>
-                    
-                    <div class="entity-details">
-                        ${createEntityDetailsForModal(entity)}
+                    <div class="wikidata-status"></div>
+                </div>
+
+                <!-- Current Entity Information -->
+                <div class="current-entity-section">
+                    <h3>Current Entity Information</h3>
+                    <div class="entity-preview">
+                        ${entity ? createEntityPreview(entity, originalName) : createUnknownEntityPreview(originalName, entityType)}
                     </div>
-                    
-                    <div class="approval-actions">
-                        <button type="button" class="approve-btn" data-action="approve">
-                            ✓ Approve & Add to Knowledge Base
-                        </button>
-                        <button type="button" class="reject-btn" data-action="reject">
-                            ✗ Reject
-                        </button>
+                </div>
+
+                <!-- Knowledge Base Search/Merge Section -->
+                <div class="kb-merge-section">
+                    <h3>Merge with Existing Knowledge Base Entry</h3>
+                    <div class="kb-search-group">
+                        <input type="text" class="kb-search-input" placeholder="Search existing entries to merge with...">
+                        <div class="kb-search-results" id="kbSearchResults"></div>
                     </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="approval-actions">
+                    <button type="button" class="approve-btn" data-action="approve">
+                        ✓ Approve & Add to Knowledge Base
+                    </button>
+                    <button type="button" class="reject-btn" data-action="reject">
+                        ✗ Reject
+                    </button>
                 </div>
             </div>
+        </div>
+    `;
+
+    setupApprovalModalEventListeners(modal, entityInfo);
+    return modal;
+}
+
+// Create entity preview for modal
+function createEntityPreview(entity, originalName) {
+    return `
+        <div class="entity-type-badge ${entity.type}">${entity.type}</div>
+        <h4 class="entity-name">${escapeHtml(entity.name)}</h4>
+        <div class="original-name">Originally: "${escapeHtml(originalName)}"</div>
+        ${entity.wikidata_id ? `<div class="wikidata-id">Wikidata ID: <a href="https://www.wikidata.org/wiki/${entity.wikidata_id}" target="_blank">${entity.wikidata_id}</a></div>` : ''}
+        ${entity.description ? `<div class="entity-description">${escapeHtml(entity.description)}</div>` : ''}
+        <div class="entity-details">
+            ${createEntityDetailsForModal(entity)}
+        </div>
+    `;
+}
+
+// Create unknown entity preview
+function createUnknownEntityPreview(originalName, entityType) {
+    if (entityType === 'unknown') {
+        return `
+            <div class="entity-type-badge unknown">Unknown</div>
+            <h4 class="entity-name">${escapeHtml(originalName)}</h4>
+            <div class="entity-description">No Wikidata information found for this entity.</div>
+            <p class="help-text">Use the Wikidata ID Override above to manually specify an entity, or change the entity type if the automatic detection was incorrect.</p>
         `;
     } else {
-        // Unknown entity - not found in Wikidata
-        modalContent = `
-            <div class="modal-container approval-modal-container">
-                <div class="modal-header">
-                    <h2>Unknown Entity</h2>
-                    <button type="button" class="close-modal-btn approval-close">&times;</button>
-                </div>
-                
-                <div class="modal-content">
-                    <div class="approval-entity-info">
-                        <div class="entity-type-badge unknown">Unknown</div>
-                        <h3 class="entity-name">${escapeHtml(originalName)}</h3>
-                        <div class="unknown-reason">Not found in Wikidata</div>
-                    </div>
-                    
-                    <div class="approval-actions">
-                        <button type="button" class="map-btn" data-action="map">
-                            🔗 Map to Wikidata ID
-                        </button>
-                        <button type="button" class="reject-btn" data-action="reject">
-                            ✗ Reject
-                        </button>
-                    </div>
-                </div>
-            </div>
+        // Basic entity without Wikidata
+        const typeLabels = {
+            person: 'Person',
+            place: 'Place', 
+            organization: 'Organization'
+        };
+        
+        return `
+            <div class="entity-type-badge ${entityType}">${typeLabels[entityType] || entityType}</div>
+            <h4 class="entity-name">${escapeHtml(originalName)}</h4>
+            <div class="entity-description">Basic ${typeLabels[entityType]?.toLowerCase() || entityType} entry without Wikidata information.</div>
+            <p class="help-text">This will be saved as a basic entity. You can add a Wikidata ID above to enrich with additional information.</p>
         `;
     }
-    
-    modal.innerHTML = modalContent;
-    
-    // Add event listeners
-    setupApprovalModalEventListeners(modal, entityInfo);
-    
-    return modal;
 }
 
 // Create entity details for modal display
@@ -618,21 +651,57 @@ function setupApprovalModalEventListeners(modal, entityInfo) {
         closeBtn.addEventListener('click', closeApprovalModal);
     }
     
+    // Entity type selection
+    const entityTypeSelect = modal.querySelector('.entity-type-select');
+    if (entityTypeSelect) {
+        entityTypeSelect.addEventListener('change', (e) => {
+            handleEntityTypeChange(e.target.value, entityInfo, modal);
+        });
+    }
+
+    // Wikidata lookup and clear
+    const wikidataLookupBtn = modal.querySelector('.wikidata-lookup-btn');
+    const wikidataClearBtn = modal.querySelector('.wikidata-clear-btn');
+    const wikidataInput = modal.querySelector('.wikidata-override-input');
+    if (wikidataLookupBtn && wikidataInput) {
+        wikidataLookupBtn.addEventListener('click', () => {
+            handleWikidataLookup(wikidataInput.value.trim(), entityInfo, modal);
+        });
+
+        wikidataInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleWikidataLookup(wikidataInput.value.trim(), entityInfo, modal);
+            }
+        });
+    }
+    
+    if (wikidataClearBtn && wikidataInput) {
+        wikidataClearBtn.addEventListener('click', () => {
+            handleWikidataClear(entityInfo, modal);
+        });
+    }
+
+    // Knowledge base search
+    const kbSearchInput = modal.querySelector('.kb-search-input');
+    if (kbSearchInput) {
+        kbSearchInput.addEventListener('input', (e) => {
+            handleKBSearch(e.target.value, entityInfo, modal);
+        });
+        
+        // Load initial results
+        handleKBSearch('', entityInfo, modal);
+    }
+    
     // Action buttons
     const approveBtn = modal.querySelector('.approve-btn');
     const rejectBtn = modal.querySelector('.reject-btn');
-    const mapBtn = modal.querySelector('.map-btn');
     
     if (approveBtn) {
-        approveBtn.addEventListener('click', () => handleApprovalAction('approve', entityInfo));
+        approveBtn.addEventListener('click', () => handleIntegratedApproval(entityInfo, modal));
     }
     
     if (rejectBtn) {
         rejectBtn.addEventListener('click', () => handleApprovalAction('reject', entityInfo));
-    }
-    
-    if (mapBtn) {
-        mapBtn.addEventListener('click', () => handleApprovalAction('map', entityInfo));
     }
     
     // Close on backdrop click
@@ -661,42 +730,274 @@ function closeApprovalModal() {
     }
 }
 
-// Handle approval actions
-async function handleApprovalAction(action, entityInfo) {
+// Handle entity type change
+async function handleEntityTypeChange(newType, entityInfo, modal) {
+    // Update the entity info
+    entityInfo.entityType = newType;
+    
+    // If changing from unknown to a specific type, try to search Wikidata again
+    if (newType !== 'unknown' && !entityInfo.entity) {
+        const statusDiv = modal.querySelector('.wikidata-status');
+        statusDiv.innerHTML = '<div class="loading">Searching Wikidata for ' + newType + '...</div>';
+        
+        try {
+            const { searchWikidataEntity } = await import('./wikidataIntegration.js');
+            const wikidataResult = await searchWikidataEntity(entityInfo.originalName);
+            
+            if (wikidataResult && wikidataResult.entityType === newType) {
+                entityInfo.entity = wikidataResult;
+                updateEntityPreview(modal, entityInfo);
+                statusDiv.innerHTML = '<div class="success">Found matching ' + newType + ' in Wikidata!</div>';
+            } else {
+                statusDiv.innerHTML = '<div class="info">No matching ' + newType + ' found in Wikidata.</div>';
+            }
+        } catch (error) {
+            statusDiv.innerHTML = '<div class="error">Error searching Wikidata: ' + error.message + '</div>';
+        }
+    }
+    
+    // Update KB search results for the new type
+    const kbSearchInput = modal.querySelector('.kb-search-input');
+    if (kbSearchInput) {
+        handleKBSearch(kbSearchInput.value, entityInfo, modal);
+    }
+}
+
+// Handle Wikidata lookup
+async function handleWikidataLookup(wikidataId, entityInfo, modal) {
+    if (!wikidataId || !wikidataId.match(/^Q\d+$/i)) {
+        const statusDiv = modal.querySelector('.wikidata-status');
+        statusDiv.innerHTML = '<div class="error">Please enter a valid Wikidata ID (e.g., Q123456)</div>';
+        return;
+    }
+    
+    const statusDiv = modal.querySelector('.wikidata-status');
+    statusDiv.innerHTML = '<div class="loading">Looking up Wikidata entity...</div>';
     
     try {
-        if (action === 'approve' && entityInfo.entity) {
-            // Show immediate feedback that approval is in progress
-            showEntityProcessing(entityInfo.originalName, 'Saving...');
+        const { getWikidataEntityDetails } = await import('./wikidataIntegration.js');
+        const wikidataEntity = await getWikidataEntityDetails(wikidataId, entityInfo.originalName);
+        
+        if (wikidataEntity) {
+            entityInfo.entity = wikidataEntity;
+            entityInfo.entityType = wikidataEntity.entityType || entityInfo.entityType;
             
-            // Import required functions
-            const { saveEntityToFirebase } = await import('./firebaseOperations.js');
-            const { getFirebaseCollectionName } = await import('./collectionMapping.js');
+            // Update the entity type select
+            const entityTypeSelect = modal.querySelector('.entity-type-select');
+            if (entityTypeSelect) {
+                entityTypeSelect.value = entityInfo.entityType;
+            }
             
-            // Save to Firebase
-            const collectionName = getFirebaseCollectionName(entityInfo.entity.type + 's');
-            await saveEntityToFirebase(entityInfo.entity, collectionName);
-            
-            console.log(`✅ Successfully saved ${entityInfo.entity.name} to Firebase`);
-            
-            // Update the CSV table to show this entity as approved
-            updateEntityInCSVTable(entityInfo.originalName, 'approved');
-            
-        } else if (action === 'reject') {
-            
+            updateEntityPreview(modal, entityInfo);
+            statusDiv.innerHTML = '<div class="success">Successfully loaded Wikidata entity!</div>';
+        } else {
+            statusDiv.innerHTML = '<div class="error">Wikidata entity not found or could not be processed.</div>';
+        }
+    } catch (error) {
+        console.error('Error looking up Wikidata entity:', error);
+        statusDiv.innerHTML = '<div class="error">Error looking up Wikidata entity: ' + error.message + '</div>';
+    }
+}
+
+// Handle clearing Wikidata data
+function handleWikidataClear(entityInfo, modal) {
+    // Clear the input field
+    const wikidataInput = modal.querySelector('.wikidata-override-input');
+    if (wikidataInput) {
+        wikidataInput.value = '';
+    }
+    
+    // Clear the status
+    const statusDiv = modal.querySelector('.wikidata-status');
+    if (statusDiv) {
+        statusDiv.innerHTML = '<div class="info">Wikidata information cleared. You can still save this as a basic entity.</div>';
+    }
+    
+    // Remove Wikidata entity but keep the entity type and original name
+    entityInfo.entity = null;
+    
+    // Update the preview to show we're creating a basic entity
+    updateEntityPreview(modal, entityInfo);
+    
+    console.log('🗑️ Cleared Wikidata data for:', entityInfo.originalName);
+}
+
+// Handle knowledge base search
+async function handleKBSearch(searchTerm, entityInfo, modal) {
+    const resultsContainer = modal.querySelector('#kbSearchResults');
+    if (!resultsContainer) return;
+
+    // Get knowledge base data
+    const { getKnowledgeBaseData } = await import('./knowledgeBase.js');
+    const kbData = getKnowledgeBaseData();
+    
+    // Map entity types to knowledge base data keys
+    const entityTypeMapping = {
+        'person': 'people',
+        'place': 'places', 
+        'organization': 'organizations'
+    };
+    
+    const kbKey = entityTypeMapping[entityInfo.entityType] || 'people';
+    const entities = kbData[kbKey] || [];
+
+    // Filter entities based on search term
+    let filteredEntities = entities;
+    if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        filteredEntities = entities.filter(entity => {
+            return (entity.name && entity.name.toLowerCase().includes(term)) ||
+                   (entity.description && entity.description.toLowerCase().includes(term)) ||
+                   (entity.aliases && entity.aliases.some(alias => alias.toLowerCase().includes(term)));
+        });
+    }
+
+    // Display results
+    if (filteredEntities.length === 0) {
+        resultsContainer.innerHTML = `
+            <div class="kb-no-results">
+                ${searchTerm.trim() ? 'No matching entities found.' : `No ${entityInfo.entityType}s found in knowledge base.`}
+            </div>
+        `;
+    } else {
+        resultsContainer.innerHTML = filteredEntities.slice(0, 5).map(entity => `
+            <div class="kb-result-item" data-entity-id="${entity.id}" data-entity-type="${kbKey}">
+                <div class="kb-result-header">
+                    <h4 class="kb-result-name">${escapeHtml(entity.name)}</h4>
+                    ${entity.wikidata_id ? `<span class="kb-result-wikidata">${entity.wikidata_id}</span>` : ''}
+                </div>
+                ${entity.description ? `<p class="kb-result-description">${escapeHtml(entity.description)}</p>` : ''}
+                ${entity.aliases && entity.aliases.length > 0 ? `<div class="kb-result-aliases">Aliases: ${entity.aliases.map(alias => escapeHtml(alias)).join(', ')}</div>` : ''}
+                <button type="button" class="select-merge-btn" data-entity-id="${entity.id}" data-entity-type="${kbKey}">
+                    Merge with this entry
+                </button>
+            </div>
+        `).join('');
+
+        // Add click handlers for merge buttons
+        const mergeBtns = resultsContainer.querySelectorAll('.select-merge-btn');
+        mergeBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const targetEntityId = btn.dataset.entityId;
+                const targetEntityType = btn.dataset.entityType;
+                handleMergeWithKBEntity(entityInfo, targetEntityId, targetEntityType, filteredEntities);
+            });
+        });
+    }
+}
+
+// Update entity preview in modal
+function updateEntityPreview(modal, entityInfo) {
+    const previewContainer = modal.querySelector('.entity-preview');
+    if (previewContainer) {
+        previewContainer.innerHTML = entityInfo.entity ? 
+            createEntityPreview(entityInfo.entity, entityInfo.originalName) : 
+            createUnknownEntityPreview(entityInfo.originalName, entityInfo.entityType);
+    }
+}
+
+// Handle integrated approval (main approval action)
+async function handleIntegratedApproval(entityInfo, modal) {
+    try {
+        if (!entityInfo.entity && entityInfo.entityType === 'unknown') {
+            alert('Please specify an entity type or provide Wikidata information before approving.');
+            return;
+        }
+        
+        // Show processing feedback
+        showEntityProcessing(entityInfo.originalName, 'Saving...');
+        
+        // Import required functions
+        const { saveEntityToFirebase } = await import('./firebaseOperations.js');
+        const { getFirebaseCollectionName } = await import('./collectionMapping.js');
+        
+        // Prepare entity for saving
+        let entityToSave = entityInfo.entity;
+        
+        // If no entity but we have a type, create a basic entity
+        if (!entityToSave && entityInfo.entityType !== 'unknown') {
+            entityToSave = {
+                name: entityInfo.originalName,
+                type: entityInfo.entityType,
+                aliases: [],
+                description: ''
+            };
+        }
+        
+        // Save to Firebase
+        const collectionName = getFirebaseCollectionName(entityToSave.type + 's');
+        await saveEntityToFirebase(entityToSave, collectionName);
+        
+        console.log(`✅ Successfully saved ${entityToSave.name} to Firebase`);
+        
+        // Update the CSV table to show this entity as approved
+        updateEntityInCSVTable(entityInfo.originalName, 'approved');
+        
+        // Close the modal
+        closeApprovalModal();
+        
+    } catch (error) {
+        console.error('Error handling integrated approval:', error);
+        alert(`Error: ${error.message}`);
+    }
+}
+
+// Handle merging with KB entity
+async function handleMergeWithKBEntity(sourceEntityInfo, targetEntityId, targetEntityType, availableEntities) {
+    try {
+        // Find the target entity
+        const targetEntity = availableEntities.find(entity => entity.id === targetEntityId);
+        if (!targetEntity) {
+            throw new Error('Target entity not found');
+        }
+
+        // Show processing feedback
+        showEntityProcessing(sourceEntityInfo.originalName, 'Merging...');
+
+        // Add the original name as an alias to the target entity
+        const updatedEntity = { ...targetEntity };
+        if (!updatedEntity.aliases) {
+            updatedEntity.aliases = [];
+        }
+
+        // Check if the alias already exists
+        const aliasExists = updatedEntity.aliases.some(alias => 
+            alias.toLowerCase().trim() === sourceEntityInfo.originalName.toLowerCase().trim()
+        );
+
+        if (!aliasExists) {
+            updatedEntity.aliases.push(sourceEntityInfo.originalName);
+        }
+
+        // Update the entity in Firebase
+        const { updateEntityInFirebase } = await import('./firebaseOperations.js');
+        await updateEntityInFirebase(updatedEntity, targetEntityType, targetEntityId);
+
+        console.log(`✅ Successfully merged "${sourceEntityInfo.originalName}" as alias to "${targetEntity.name}"`);
+
+        // Update the CSV table to show this entity as merged
+        updateEntityInCSVTable(sourceEntityInfo.originalName, 'merged');
+
+        // Close the modal
+        closeApprovalModal();
+
+        // Refresh knowledge base to show updated data
+        const { loadKnowledgeBase } = await import('./knowledgeBase.js');
+        await loadKnowledgeBase();
+
+    } catch (error) {
+        console.error('Error merging entities:', error);
+        alert(`Error merging entities: ${error.message}`);
+    }
+}
+
+// Handle approval actions (simplified for reject only)
+async function handleApprovalAction(action, entityInfo) {
+    try {
+        if (action === 'reject') {
             // Update the CSV table to show this entity as rejected
             updateEntityInCSVTable(entityInfo.originalName, 'rejected');
-            
-        } else if (action === 'map') {
-            // Handle mapping to Wikidata - prompt for Wikidata ID
-            const wikidataId = prompt('Enter Wikidata ID (e.g., Q123456):');
-            if (wikidataId && /^Q\d+$/i.test(wikidataId.trim())) {
-                // TODO: Implement Wikidata mapping
-                alert('Wikidata mapping functionality will be implemented soon!');
-            } else if (wikidataId) {
-                alert('Please enter a valid Wikidata ID (e.g., Q123456)');
-                return; // Don't close modal
-            }
         }
         
         // Close the modal
@@ -738,7 +1039,9 @@ function updateEntityInCSVTable(originalName, status) {
             
             // Update class and title
             span.className = `entity-${status}`;
-            span.title = status === 'approved' ? 'Successfully added to knowledge base ✓' : 'Rejected ✗';
+            span.title = status === 'approved' ? 'Successfully added to knowledge base ✓' : 
+                        status === 'merged' ? 'Successfully merged with existing entry 🔗' : 
+                        'Rejected ✗';
             
             // Remove click handler for approved/rejected entities
             span.style.cursor = 'default';
@@ -746,6 +1049,7 @@ function updateEntityInCSVTable(originalName, status) {
         }
     });
 }
+
 
 // Handle file upload
 export function handleCSVUpload(file, statusDiv) {

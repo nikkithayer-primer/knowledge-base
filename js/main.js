@@ -13,8 +13,6 @@ const form = document.getElementById('dataForm');
 const entityTypeInput = document.getElementById('entityType');
 const dynamicFields = document.getElementById('dynamicFields');
 const submitBtn = document.getElementById('submitBtn');
-const loadBtn = document.getElementById('loadBtn');
-const resetBtn = document.getElementById('resetBtn');
 const statusDiv = document.getElementById('status');
 
 // Auto-detection elements
@@ -39,7 +37,7 @@ const csvStatus = document.getElementById('csvStatus');
 const csvDataDisplay = document.getElementById('csvDataDisplay');
 const csvTableContainer = document.getElementById('csvTableContainer');
 const csvEmptyState = document.getElementById('csvEmptyState');
-const clearCsvBtn = document.getElementById('clearCsvBtn');
+const csvUploadArea = document.querySelector('.csv-upload-area');
 
 // Approval queue functionality removed - now integrated into CSV table
 
@@ -364,41 +362,6 @@ async function handleSubmit(e) {
     }
 }
 
-async function handleLoadData() {
-    const entityType = entityTypeInput.value;
-    if (!entityType) {
-        showStatus('Please select an entity type to load data.', 'error', statusDiv);
-        return;
-    }
-    
-    try {
-        setButtonLoading(loadBtn, true, 'Load Data', 'Loading...');
-        
-        const entities = await loadEntitiesFromFirebase(entityType);
-        
-        if (entities.length === 0) {
-            showStatus(`No ${entityType} found in the database.`, 'error', statusDiv);
-            return;
-        }
-        
-        showStatus(`Loaded ${entities.length} ${entityType} from the database.`, 'success', statusDiv);
-        
-    } catch (error) {
-        console.error('Error loading data: ', error);
-        showStatus(`Error loading data: ${error.message}`, 'error', statusDiv);
-    } finally {
-        setButtonLoading(loadBtn, false, 'Load Data', 'Loading...');
-    }
-}
-
-function handleReset() {
-    form.reset();
-    clearDynamicFields();
-    hideEntityTypeIndicator();
-    showManualTypeSelection();
-    statusDiv.style.display = 'none';
-    showStatus('Form reset successfully.', 'success', statusDiv);
-}
 
 // Modal functions
 function openModal() {
@@ -559,6 +522,11 @@ function displayCSVData(csvData) {
     // Hide empty state - data is now shown in the same CSV tab
     csvEmptyState.style.display = 'none';
     
+    // Hide upload area after successful CSV upload
+    if (csvUploadArea) {
+        csvUploadArea.style.display = 'none';
+    }
+    
     // Show the data display section
     const csvDataDisplay = document.getElementById('csvDataDisplay');
     if (csvDataDisplay) {
@@ -566,18 +534,6 @@ function displayCSVData(csvData) {
     }
 }
 
-// Clear CSV data
-function clearCSVData() {
-    currentCSVData = null;
-    csvTableContainer.innerHTML = '';
-    csvDataDisplay.style.display = 'none';
-    csvEmptyState.style.display = 'block';
-    csvStatus.style.display = 'none';
-    
-    // Reset file input
-    csvFileInput.value = '';
-    
-}
 
 // Initialize event listeners
 function initializeEventListeners() {
@@ -628,8 +584,6 @@ function initializeEventListeners() {
     });
     
     form.addEventListener('submit', handleSubmit);
-    loadBtn.addEventListener('click', handleLoadData);
-    resetBtn.addEventListener('click', handleReset);
     
     // Tab listeners
     csvTab.addEventListener('click', switchToCSVTab);
@@ -641,11 +595,6 @@ function initializeEventListeners() {
     uploadZone.addEventListener('dragover', handleDragOver);
     uploadZone.addEventListener('dragleave', handleDragLeave);
     uploadZone.addEventListener('drop', handleDrop);
-    
-    // CSV clear button
-    if (clearCsvBtn) {
-        clearCsvBtn.addEventListener('click', clearCSVData);
-    }
     
     // Approval queue functionality removed - now handled inline in CSV table
     
